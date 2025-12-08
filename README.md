@@ -1,4 +1,4 @@
-# AuthService
+# UserService
 
 [![ReleaseCard]][Release]![ReleaseDataCard]![LastCommitCard]  
 ![BuildStateCard]![DockerStateCard]![ProjectLicense]
