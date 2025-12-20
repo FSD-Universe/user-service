@@ -3,7 +3,7 @@ package content
 
 import (
 	c "user-service/src/interfaces/config"
-	"user-service/src/interfaces/database/repository"
+	"user-service/src/interfaces/repository"
 
 	"half-nothing.cn/service-core/interfaces/cleaner"
 	"half-nothing.cn/service-core/interfaces/config"
