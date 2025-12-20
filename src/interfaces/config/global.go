@@ -2,7 +2,7 @@
 package config
 
 import (
-	"auth-service/src/interfaces/global"
+	"user-service/src/interfaces/global"
 
 	"half-nothing.cn/service-core/interfaces/config"
 )
