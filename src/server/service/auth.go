@@ -36,11 +36,6 @@ func NewAuthService(
 	}
 }
 
-func (s *AuthService) Register(user *DTO.UserRegister) *dto.ApiResponse[bool] {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (s *AuthService) Login(form *DTO.UserLogin) *dto.ApiResponse[*DTO.UserLoginResponse] {
 	userId := repository.GetUserId(form.Username)
 	user, err := userId.GetUser(s.userRepo)
@@ -72,9 +67,9 @@ func (s *AuthService) Login(form *DTO.UserLogin) *dto.ApiResponse[*DTO.UserLogin
 				),
 				nil,
 			)
-		} else {
-			return dto.NewApiResponse[*DTO.UserLoginResponse](service.ErrUserBanned, nil)
 		}
+
+		return dto.NewApiResponse[*DTO.UserLoginResponse](service.ErrUserBanned, nil)
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(form.Password)); err != nil {
@@ -143,9 +138,9 @@ func (s *AuthService) FsdLogin(form *DTO.UserFsdLogin) *DTO.UserFsdLoginResponse
 				Success:  false,
 				ErrorMsg: fmt.Sprintf("you were banned from the server, unban time: %s", user.BannedUntil.Time.Format("2006-01-02 15:04:05")),
 			}
-		} else {
-			return &DTO.UserFsdLoginResponse{Success: false, ErrorMsg: "you were banned from the server"}
 		}
+
+		return &DTO.UserFsdLoginResponse{Success: false, ErrorMsg: "you were banned from the server"}
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(form.Password)); err != nil {
@@ -200,9 +195,9 @@ func (s *AuthService) RefreshToken(form *DTO.RefreshToken) *dto.ApiResponse[*DTO
 				),
 				nil,
 			)
-		} else {
-			return dto.NewApiResponse[*DTO.RefreshTokenResponse](service.ErrUserBanned, nil)
 		}
+
+		return dto.NewApiResponse[*DTO.RefreshTokenResponse](service.ErrUserBanned, nil)
 	}
 
 	if err := s.userRepo.Update(user, updates); err != nil {

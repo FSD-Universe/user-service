@@ -13,7 +13,6 @@ var (
 )
 
 type AuthInterface interface {
-	Register(form *dto.UserRegister) *ApiResponse[bool]
 	Login(form *dto.UserLogin) *ApiResponse[*dto.UserLoginResponse]
 	FsdLogin(form *dto.UserFsdLogin) *dto.UserFsdLoginResponse
 	RefreshToken(form *dto.RefreshToken) *ApiResponse[*dto.RefreshTokenResponse]

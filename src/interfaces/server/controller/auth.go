@@ -8,6 +8,5 @@ import (
 type AuthInterface interface {
 	UserLogin(ctx echo.Context) error
 	UserFsdLogin(ctx echo.Context) error
-	UserRegister(ctx echo.Context) error
 	RefreshToken(ctx echo.Context) error
 }

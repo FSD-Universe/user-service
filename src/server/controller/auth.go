@@ -35,7 +35,6 @@ func (controller *AuthController) UserLogin(ctx echo.Context) error {
 		controller.logger.Errorf("UserLogin handle fail, parse argument fail, %v", err)
 		return dto.ErrorResponse(ctx, dto.ErrErrorParam)
 	}
-	controller.logger.Debugf("UserLogin with argument %#v", data)
 	res, err := dto.ValidStruct(data)
 	if err != nil {
 		controller.logger.Errorf("UserLogin handle fail, validate err, %v", err)
@@ -46,6 +45,7 @@ func (controller *AuthController) UserLogin(ctx echo.Context) error {
 		return dto.ErrorResponse(ctx, res)
 	}
 	dto.SetHttpContent(data, ctx)
+	controller.logger.Debugf("UserLogin with argument %#v", data)
 	return controller.userService.Login(data).Response(ctx)
 }
 
@@ -55,7 +55,6 @@ func (controller *AuthController) UserFsdLogin(ctx echo.Context) error {
 		controller.logger.Errorf("UserFsdLogin handle fail, parse argument fail, %v", err)
 		return dto.ErrorResponse(ctx, dto.ErrErrorParam)
 	}
-	controller.logger.Debugf("UserFsdLogin with argument %#v", data)
 	res, err := dto.ValidStruct(data)
 	if err != nil {
 		controller.logger.Errorf("UserFsdLogin handle fail, validate err, %v", err)
@@ -66,27 +65,8 @@ func (controller *AuthController) UserFsdLogin(ctx echo.Context) error {
 		return dto.ErrorResponse(ctx, res)
 	}
 	dto.SetHttpContent(data, ctx)
+	controller.logger.Debugf("UserFsdLogin with argument %#v", data)
 	return dto.JsonResponse(ctx, dto.HttpCodeOk.Code(), controller.userService.FsdLogin(data))
-}
-
-func (controller *AuthController) UserRegister(ctx echo.Context) error {
-	data := &DTO.UserRegister{}
-	if err := ctx.Bind(data); err != nil {
-		controller.logger.Errorf("UserRegister handle fail, parse argument fail, %v", err)
-		return dto.ErrorResponse(ctx, dto.ErrErrorParam)
-	}
-	controller.logger.Debugf("UserRegister with argument %#v", data)
-	res, err := dto.ValidStruct(data)
-	if err != nil {
-		controller.logger.Errorf("UserRegister handle fail, validate err, %v", err)
-		return dto.ErrorResponse(ctx, dto.ErrServerError)
-	}
-	if res != nil {
-		controller.logger.Errorf("UserRegister handle fail, validate argument fail, %v", res)
-		return dto.ErrorResponse(ctx, res)
-	}
-	dto.SetHttpContent(data, ctx)
-	return controller.userService.Register(data).Response(ctx)
 }
 
 func (controller *AuthController) RefreshToken(ctx echo.Context) error {
@@ -95,14 +75,12 @@ func (controller *AuthController) RefreshToken(ctx echo.Context) error {
 		controller.logger.Errorf("RefreshToken handle fail, parse argument fail, %v", err)
 		return dto.ErrorResponse(ctx, dto.ErrErrorParam)
 	}
-	controller.logger.Debugf("RefreshToken with argument %#v", data)
-
 	dto.SetHttpContent(data, ctx)
 	err := jwt.SetJwtContent(data, ctx)
 	if err != nil {
 		controller.logger.Errorf("RefreshToken handle fail, set jwt content err, %v", err)
 		return dto.ErrorResponse(ctx, dto.ErrServerError)
 	}
-
+	controller.logger.Debugf("RefreshToken with argument %#v", data)
 	return controller.userService.RefreshToken(data).Response(ctx)
 }

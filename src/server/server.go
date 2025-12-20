@@ -31,7 +31,7 @@ func StartServer(content *content.ApplicationContent) {
 		http.SetTelemetry(e, c.TelemetryConfig)
 	}
 
-	userController := controller.NewAuthController(
+	authController := controller.NewAuthController(
 		content.Logger(),
 		service.NewAuthService(
 			content.Logger(),
@@ -40,11 +40,21 @@ func StartServer(content *content.ApplicationContent) {
 		),
 	)
 
+	userController := controller.NewUserController(
+		content.Logger(),
+		service.NewUserService(
+			content.Logger(),
+			content.UserRepo(),
+		),
+	)
+
 	apiGroup := e.Group("/api/v1")
 	userGroup := apiGroup.Group("/users")
-	userGroup.POST("/token", userController.UserLogin)
-	userGroup.POST("/token/fsd", userController.UserFsdLogin)
-	userGroup.GET("/token", userController.RefreshToken, jwtMidware, requireRefresh)
+	userGroup.POST("/token", authController.UserLogin)
+	userGroup.POST("/token/fsd", authController.UserFsdLogin)
+	userGroup.GET("/token", authController.RefreshToken, jwtMidware, requireRefresh)
+
+	userGroup.POST("", userController.UserRegister)
 
 	http.SetUnmatchedRoute(e)
 	http.SetCleaner(content.Cleaner(), e)
