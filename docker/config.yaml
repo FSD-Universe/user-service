@@ -23,6 +23,30 @@ global:
     # 是否使用本地时间而不是UTC时间
     local_time: true
 
+database:
+  # 数据库类型
+  # sqlite3, mysql, postgresql
+  type: sqlite3
+  # 当数据库类型为sqlite3时，此处填写数据库文件地址
+  # 其余数据库类型填写使用的数据库名称
+  database: database.db
+  # 数据库地址
+  host:
+  # 数据库端口
+  port: 0
+  # 数据库用户名
+  username:
+  # 数据库密码
+  password:
+  # 是否使用SSL
+  enable_ssl: false
+  # 连接池长连接超时时间
+  connection_timeout: 1h
+  # 查询超时时间
+  query_timeout: 10s
+  # 连接池最大连接数
+  max_connections: 32
+
 # 服务配置
 server:
   # http服务配置
@@ -96,3 +120,26 @@ jwt:
   expire: 1h
   # 刷新token过期时间
   refresh_expire: 24h
+
+# 监控配置
+telemetry:
+  # 是否启用
+  enable: false
+  # 服务名称
+  name:
+  # 接入点
+  endpoint:
+  # 认证秘钥
+  token:
+  # 服务名
+  service_name:
+  # 节点名
+  host_name:
+  # 启用数据库追踪
+  database_trace: false
+  # 启用grpc服务器追踪
+  grpc_server_trace: false
+  # 启用grpc客户端追踪
+  grpc_client_trace: false
+  # 启用http追踪
+  http_server_trace: false
