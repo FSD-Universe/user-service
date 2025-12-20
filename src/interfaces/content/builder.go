@@ -2,10 +2,12 @@
 package content
 
 import (
-	c "auth-service/src/interfaces/config"
+	c "user-service/src/interfaces/config"
+	"user-service/src/interfaces/database/repository"
 
 	"half-nothing.cn/service-core/interfaces/cleaner"
 	"half-nothing.cn/service-core/interfaces/config"
+	"half-nothing.cn/service-core/interfaces/http/jwt"
 	"half-nothing.cn/service-core/interfaces/logger"
 )
 
@@ -31,6 +33,16 @@ func (builder *ApplicationContentBuilder) SetCleaner(cleaner cleaner.Interface) 
 
 func (builder *ApplicationContentBuilder) SetLogger(logger logger.Interface) *ApplicationContentBuilder {
 	builder.content.logger = logger
+	return builder
+}
+
+func (builder *ApplicationContentBuilder) SetUserRepo(userRepo repository.UserInterface) *ApplicationContentBuilder {
+	builder.content.userRepo = userRepo
+	return builder
+}
+
+func (builder *ApplicationContentBuilder) SetJwtClaimFactory(claimFactory jwt.ClaimFactoryInterface) *ApplicationContentBuilder {
+	builder.content.claimFactory = claimFactory
 	return builder
 }
 

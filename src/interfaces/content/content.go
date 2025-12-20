@@ -2,10 +2,12 @@
 package content
 
 import (
-	c "auth-service/src/interfaces/config"
+	c "user-service/src/interfaces/config"
+	"user-service/src/interfaces/database/repository"
 
 	"half-nothing.cn/service-core/interfaces/cleaner"
 	"half-nothing.cn/service-core/interfaces/config"
+	"half-nothing.cn/service-core/interfaces/http/jwt"
 	"half-nothing.cn/service-core/interfaces/logger"
 )
 
@@ -14,6 +16,8 @@ type ApplicationContent struct {
 	configManager config.ManagerInterface[*c.Config] // 配置管理器
 	cleaner       cleaner.Interface                  // 清理器
 	logger        logger.Interface                   // 日志
+	claimFactory  jwt.ClaimFactoryInterface          // JWT 令牌工厂
+	userRepo      repository.UserInterface           // 用户数据库操作
 }
 
 func (app *ApplicationContent) ConfigManager() config.ManagerInterface[*c.Config] {
@@ -23,3 +27,11 @@ func (app *ApplicationContent) ConfigManager() config.ManagerInterface[*c.Config
 func (app *ApplicationContent) Cleaner() cleaner.Interface { return app.cleaner }
 
 func (app *ApplicationContent) Logger() logger.Interface { return app.logger }
+
+func (app *ApplicationContent) ClaimFactory() jwt.ClaimFactoryInterface {
+	return app.claimFactory
+}
+
+func (app *ApplicationContent) UserRepo() repository.UserInterface {
+	return app.userRepo
+}
