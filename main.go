@@ -1,25 +1,27 @@
 package main
 
 import (
-	"auth-service/src/interfaces/content"
-	"auth-service/src/server"
-	"context"
 	"fmt"
-	"net"
 	"time"
+	"user-service/src/interfaces/content"
+	g "user-service/src/interfaces/global"
+	"user-service/src/repository"
+	"user-service/src/server"
 
-	grpcImpl "auth-service/src/grpc"
-	c "auth-service/src/interfaces/config"
-	g "auth-service/src/interfaces/global"
-	pb "auth-service/src/interfaces/grpc"
+	grpcImpl "user-service/src/grpc"
+	c "user-service/src/interfaces/config"
+	pb "user-service/src/interfaces/grpc"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 	"half-nothing.cn/service-core/cleaner"
 	"half-nothing.cn/service-core/config"
+	"half-nothing.cn/service-core/database"
 	"half-nothing.cn/service-core/discovery"
+	grpcUtils "half-nothing.cn/service-core/grpc"
 	"half-nothing.cn/service-core/interfaces/global"
+	"half-nothing.cn/service-core/jwt"
 	"half-nothing.cn/service-core/logger"
+	"half-nothing.cn/service-core/telemetry"
 	"half-nothing.cn/service-core/utils"
 )
 
@@ -34,85 +36,64 @@ func main() {
 
 	applicationConfig := configManager.GetConfig()
 	lg := logger.NewLogger()
-	lg.Init(
-		global.LogName,
-		applicationConfig.GlobalConfig.LogConfig,
-	)
+	lg.Init(global.LogName, applicationConfig.GlobalConfig.LogConfig)
 
-	lg.Info(" _____     _   _   _____             _")
-	lg.Info("|  _  |_ _| |_| |_|   __|___ ___ _ _|_|___ ___")
-	lg.Info("|     | | |  _|   |__   | -_|  _| | | |  _| -_|")
-	lg.Info("|__|__|___|_| |_|_|_____|___|_|  \\_/|_|___|___|")
-	lg.Infof("                     Copyright © %d-%d Half_nothing", global.BeginYear, time.Now().Year())
-	lg.Infof("                                   AuthService v%s", g.AppVersion)
+	lg.Info(" _____             _____             _")
+	lg.Info("|  |  |___ ___ ___|   __|___ ___ _ _|_|___ ___")
+	lg.Info("|  |  |_ -| -_|  _|__   | -_|  _| | | |  _| -_|")
+	lg.Info("|_____|___|___|_| |_____|___|_|  \\_/|_|___|___|")
+	lg.Info(fmt.Sprintf("%47s", fmt.Sprintf("Copyright © %d-%d Half_nothing", global.BeginYear, time.Now().Year())))
+	lg.Info(fmt.Sprintf("%47s", fmt.Sprintf("UserService v%s", g.AppVersion)))
 
 	cl := cleaner.NewCleaner(lg)
 	cl.Init()
+
+	defer cl.Clean()
+
+	closeFunc, db, err := database.InitDatabase(lg, applicationConfig.DatabaseConfig)
+	if err != nil {
+		lg.Fatalf("fail to initialize database: %v", err)
+		return
+	}
+	cl.Add("Database", closeFunc)
+
+	if applicationConfig.TelemetryConfig.Enable {
+		if err := telemetry.InitSDK(lg, cl, applicationConfig.TelemetryConfig); err != nil {
+			lg.Fatalf("fail to initialize telemetry: %v", err)
+			return
+		}
+
+		if applicationConfig.TelemetryConfig.DatabaseTrace {
+			if err := database.ApplyDBTracing(db, "mysql"); err != nil {
+				lg.Fatalf("fail to apply database tracing: %v", err)
+				return
+			}
+		}
+	}
 
 	applicationContent := content.NewApplicationContentBuilder().
 		SetConfigManager(configManager).
 		SetCleaner(cl).
 		SetLogger(lg).
+		SetJwtClaimFactory(jwt.NewClaimFactory(applicationConfig.JwtConfig)).
+		SetUserRepo(repository.NewUserRepository(lg, db, applicationConfig.DatabaseConfig.QueryTimeoutDuration)).
 		Build()
 
 	go server.StartServer(applicationContent)
 
 	if applicationConfig.ServerConfig.GrpcServerConfig.Enable {
 		started := make(chan bool)
-		go func() {
-			address := fmt.Sprintf("%s:%d", applicationConfig.ServerConfig.GrpcServerConfig.Host, applicationConfig.ServerConfig.GrpcServerConfig.Port)
-			lis, err := net.Listen("tcp", address)
-			if err != nil {
-				lg.Fatalf("gRPC fail to listen: %v", err)
-				started <- false
-				return
-			}
-			s := grpc.NewServer()
-			grpcServer := grpcImpl.NewAuthServer(lg)
+		initFunc := func(s *grpc.Server) {
+			grpcServer := grpcImpl.NewAuthServer(applicationContent)
 			pb.RegisterAuthServer(s, grpcServer)
-			reflection.Register(s)
-			cl.Add("gRPC Server", func(ctx context.Context) error {
-				timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-				defer cancel()
-				cleanOver := make(chan struct{})
-				go func() {
-					s.GracefulStop()
-					cleanOver <- struct{}{}
-				}()
-				select {
-				case <-timeoutCtx.Done():
-					s.Stop()
-				case <-cleanOver:
-				}
-				return nil
-			})
-			lg.Infof("gRPC server listening at %v", lis.Addr())
-			started <- true
-			if err := s.Serve(lis); err != nil {
-				lg.Fatalf("gRPC failed to serve: %v", err)
-				return
-			}
-		}()
-
-		go func() {
-			start := <-started
-			if !start {
-				return
-			}
-			version := utils.NewVersion(g.AppVersion)
-			service := discovery.NewServiceDiscovery(
-				lg,
-				"user-service",
-				applicationConfig.ServerConfig.GrpcServerConfig.Port,
-				version,
-			)
-			if err := service.Start(); err != nil {
-				lg.Fatalf("fail to start service discovery: %v", err)
-				cl.Clean()
-				return
-			}
-			cl.Add("Service Discovery", service.Stop)
-		}()
+		}
+		if applicationConfig.TelemetryConfig.Enable && applicationConfig.TelemetryConfig.GrpcServerTrace {
+			go grpcUtils.StartGrpcServerWithTrace(lg, cl, applicationConfig.ServerConfig.GrpcServerConfig, started, initFunc)
+		} else {
+			go grpcUtils.StartGrpcServer(lg, cl, applicationConfig.ServerConfig.GrpcServerConfig, started, initFunc)
+		}
+		go discovery.StartServiceDiscovery(lg, cl, started, utils.NewVersion(g.AppVersion),
+			"user-service", applicationConfig.ServerConfig.GrpcServerConfig.Port)
 	}
 
 	cl.Wait()
