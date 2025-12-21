@@ -45,6 +45,8 @@ func StartServer(content *content.ApplicationContent) {
 		service.NewUserService(
 			content.Logger(),
 			content.UserRepo(),
+			content.EmailClient(),
+			content.AuditLogClient(),
 		),
 	)
 

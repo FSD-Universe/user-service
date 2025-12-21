@@ -31,6 +31,7 @@ func main() {
 	global.CheckFlags()
 
 	utils.CheckDurationEnv(g.EnvWaitServiceTimeout, g.WaitServiceTimeout)
+	utils.CheckIntEnv(g.EnvBcryptCost, g.BcryptCost)
 
 	configManager := config.NewManager[*c.Config]()
 	if err := configManager.Init(); err != nil {

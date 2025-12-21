@@ -8,6 +8,7 @@ import (
 
 var (
 	WaitServiceTimeout = flag.Duration("wait-service-timeout", 5*time.Second, "wait service timeout")
+	BcryptCost         = flag.Int("bcrypt-cost", 12, "bcrypt cost")
 )
 
 const (
@@ -19,4 +20,5 @@ const (
 	AuditLogServiceName = "audit-service"
 
 	EnvWaitServiceTimeout = "WAIT_SERVICE_TIMEOUT"
+	EnvBcryptCost         = "BCRYPT_COST"
 )
