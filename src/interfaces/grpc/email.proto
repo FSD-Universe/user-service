@@ -1,0 +1,177 @@
+// Copyright (c) 2025 Half_nothing
+// SPDX-License-Identifier: MIT
+
+syntax = "proto3";
+
+option go_package = "src/interfaces/grpc";
+
+package fsd_universe;
+
+message ActivityAtcJoin {
+  string targetEmail = 1;
+  string cid = 2;
+  string activityName = 3;
+  string activityTime = 4;
+  string facility = 5;
+  string frequency = 6;
+}
+
+message ActivityAtcLeave {
+  string targetEmail = 1;
+  string cid = 2;
+  string activityName = 3;
+}
+
+message ActivityPilotJoin {
+  string targetEmail = 1;
+  string cid = 2;
+  string activityName = 3;
+  string activityTime = 4;
+  string callsign = 5;
+  string aircraft = 6;
+}
+
+message ActivityPilotLeave {
+  string targetEmail = 1;
+  string cid = 2;
+  string activityName = 3;
+}
+
+message ApplicationPassed {
+  string targetEmail = 1;
+  string cid = 2;
+  string operator = 3;
+  string message = 4;
+  string contact = 5;
+}
+
+message ApplicationProcessing {
+  string targetEmail = 1;
+  string cid = 2;
+  string time = 3;
+  string contact = 4;
+}
+
+message ApplicationRejected {
+  string targetEmail = 1;
+  string cid = 2;
+  string operator = 3;
+  string reason = 4;
+  string contact = 5;
+}
+
+message AtcRatingChange {
+  string targetEmail = 1;
+  string cid = 2;
+  string newValue = 3;
+  string oldValue = 4;
+  string operator = 5;
+  string contact = 6;
+}
+
+message Banned {
+  string targetEmail = 1;
+  string cid = 2;
+  string reason = 3;
+  string time = 4;
+  string operator = 5;
+  string contact = 6;
+}
+
+message InstructorChange {
+  string targetEmail = 1;
+  string cid = 2;
+  string reason = 3;
+  string instructor = 4;
+  string operator = 5;
+  string contact = 6;
+}
+
+message KickedFromServer {
+  string targetEmail = 1;
+  string cid = 2;
+  string reason = 3;
+  string time = 4;
+  string operator = 5;
+  string contact = 6;
+}
+
+message PasswordChange {
+  string targetEmail = 1;
+  string cid = 2;
+  string time = 3;
+  string ip = 4;
+  string userAgent = 5;
+}
+
+message PasswordReset {
+  string targetEmail = 1;
+  string cid = 2;
+  string time = 3;
+  string ip = 4;
+  string userAgent = 5;
+}
+
+message PermissionChange {
+  string targetEmail = 1;
+  string cid = 2;
+  string permissions = 3;
+  string operator = 4;
+  string contact = 5;
+}
+
+message RoleChange {
+  string targetEmail = 1;
+  string cid = 2;
+  string roles = 3;
+  string operator = 4;
+  string contact = 5;
+}
+
+message TicketReply {
+  string targetEmail = 1;
+  string cid = 2;
+  string title = 3;
+  string reply = 4;
+}
+
+message Welcome {
+  string targetEmail = 1;
+  string cid = 2;
+}
+
+message SendResponse {
+  bool success = 1;
+}
+
+message VerifyCode {
+  int32 cid = 1;
+  string code = 2;
+  string email = 3;
+}
+
+message VerifyResponse {
+  bool success = 1;
+  int32 code = 2; // 0 = success, 1 = code expired or not found, 2 = invalid code, 3 = unknown error
+}
+
+service Email {
+  rpc SendActivityAtcJoin(ActivityAtcJoin) returns (SendResponse);
+  rpc SendActivityAtcLeave(ActivityAtcLeave) returns (SendResponse);
+  rpc SendActivityPilotJoin(ActivityPilotJoin) returns (SendResponse);
+  rpc SendActivityPilotLeave(ActivityPilotLeave) returns (SendResponse);
+  rpc SendApplicationPassed(ApplicationPassed) returns (SendResponse);
+  rpc SendApplicationProcessing(ApplicationProcessing) returns (SendResponse);
+  rpc SendApplicationRejected(ApplicationRejected) returns (SendResponse);
+  rpc SendAtcRatingChange(AtcRatingChange) returns (SendResponse);
+  rpc SendBanned(Banned) returns (SendResponse);
+  rpc SendInstructorChange(InstructorChange) returns (SendResponse);
+  rpc SendKickedFromServer(KickedFromServer) returns (SendResponse);
+  rpc SendPasswordChange(PasswordChange) returns (SendResponse);
+  rpc SendPasswordReset(PasswordReset) returns (SendResponse);
+  rpc SendPermissionChange(PermissionChange) returns (SendResponse);
+  rpc SendRoleChange(RoleChange) returns (SendResponse);
+  rpc SendTicketReply(TicketReply) returns (SendResponse);
+  rpc SendWelcome(Welcome) returns (SendResponse);
+  rpc VerifyEmailCode(VerifyCode) returns (VerifyResponse);
+}

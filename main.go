@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"time"
 	"user-service/src/interfaces/content"
@@ -27,6 +28,8 @@ import (
 
 func main() {
 	global.CheckFlags()
+
+	utils.CheckDurationEnv(g.EnvWaitServiceTimeout, g.WaitServiceTimeout)
 
 	configManager := config.NewManager[*c.Config]()
 	if err := configManager.Init(); err != nil {
@@ -71,30 +74,56 @@ func main() {
 		}
 	}
 
-	applicationContent := content.NewApplicationContentBuilder().
+	contentBuilder := content.NewApplicationContentBuilder().
 		SetConfigManager(configManager).
 		SetCleaner(cl).
 		SetLogger(lg).
 		SetJwtClaimFactory(jwt.NewClaimFactory(applicationConfig.JwtConfig)).
-		SetUserRepo(repository.NewUserRepository(lg, db, applicationConfig.DatabaseConfig.QueryTimeoutDuration)).
-		Build()
+		SetUserRepo(repository.NewUserRepository(lg, db, applicationConfig.DatabaseConfig.QueryTimeoutDuration))
 
-	go server.StartServer(applicationContent)
-
-	if applicationConfig.ServerConfig.GrpcServerConfig.Enable {
-		started := make(chan bool)
-		initFunc := func(s *grpc.Server) {
-			grpcServer := grpcImpl.NewAuthServer(applicationContent)
-			pb.RegisterAuthServer(s, grpcServer)
-		}
-		if applicationConfig.TelemetryConfig.Enable && applicationConfig.TelemetryConfig.GrpcServerTrace {
-			go grpcUtils.StartGrpcServerWithTrace(lg, cl, applicationConfig.ServerConfig.GrpcServerConfig, started, initFunc)
-		} else {
-			go grpcUtils.StartGrpcServer(lg, cl, applicationConfig.ServerConfig.GrpcServerConfig, started, initFunc)
-		}
-		go discovery.StartServiceDiscovery(lg, cl, started, utils.NewVersion(g.AppVersion),
-			"user-service", applicationConfig.ServerConfig.GrpcServerConfig.Port)
+	started := make(chan bool)
+	initFunc := func(s *grpc.Server) {
+		grpcServer := grpcImpl.NewAuthServer(lg)
+		pb.RegisterAuthServer(s, grpcServer)
 	}
+	if applicationConfig.TelemetryConfig.Enable && applicationConfig.TelemetryConfig.GrpcServerTrace {
+		go grpcUtils.StartGrpcServerWithTrace(lg, cl, applicationConfig.ServerConfig.GrpcServerConfig, started, initFunc)
+	} else {
+		go grpcUtils.StartGrpcServer(lg, cl, applicationConfig.ServerConfig.GrpcServerConfig, started, initFunc)
+	}
+	service := discovery.StartServiceDiscovery(lg, cl, started, utils.NewVersion(g.AppVersion), "user-service", applicationConfig.ServerConfig.GrpcServerConfig.Port)
+
+	emailServiceInfo, err := service.WaitForService("email-service", *g.WaitServiceTimeout)
+	if err != nil {
+		lg.Fatalf("fail to wait for email service: %v", err)
+		return
+	}
+	emailServiceConn, err := grpcUtils.StartGrpcClient(lg, emailServiceInfo.IP, emailServiceInfo.Port, applicationConfig.ClientConfig)
+	if err != nil {
+		lg.Fatalf("fail to start grpc client: %v", err)
+		_ = emailServiceConn.Close()
+		return
+	}
+	emailClient := pb.NewEmailClient(emailServiceConn)
+	contentBuilder.SetEmailClient(emailClient)
+	cl.Add("EmailService", func(_ context.Context) error { return emailServiceConn.Close() })
+
+	auditLogServiceInfo, err := service.WaitForService("audit-service", *g.WaitServiceTimeout)
+	if err != nil {
+		lg.Fatalf("fail to wait for audit service: %v", err)
+		return
+	}
+	auditLogServiceConn, err := grpcUtils.StartGrpcClient(lg, auditLogServiceInfo.IP, auditLogServiceInfo.Port, applicationConfig.ClientConfig)
+	if err != nil {
+		lg.Fatalf("fail to start grpc client: %v", err)
+		_ = auditLogServiceConn.Close()
+		return
+	}
+	auditLogClient := pb.NewAuditLogClient(auditLogServiceConn)
+	contentBuilder.SetAuditLogClient(auditLogClient)
+	cl.Add("AuditLogService", func(_ context.Context) error { return auditLogServiceConn.Close() })
+
+	go server.StartServer(contentBuilder.Build())
 
 	cl.Wait()
 }

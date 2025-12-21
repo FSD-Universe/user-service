@@ -1,0 +1,26 @@
+// Copyright (c) 2025 Half_nothing
+// SPDX-License-Identifier: MIT
+
+syntax = "proto3";
+
+option go_package = "src/interfaces/grpc";
+
+package fsd_universe;
+
+message AuditLogRequest {
+  string event = 1;
+  string subject = 2;
+  string object = 3;
+  string ip = 4;
+  string user_agent = 5;
+  string old_value = 6;
+  string new_value = 7;
+}
+
+message AuditLogResponse {
+  bool success = 1;
+}
+
+service AuditLog {
+  rpc Log(AuditLogRequest) returns (AuditLogResponse);
+}

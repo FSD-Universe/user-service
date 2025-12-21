@@ -2,7 +2,6 @@
 package grpc
 
 import (
-	"user-service/src/interfaces/content"
 	pb "user-service/src/interfaces/grpc"
 
 	"half-nothing.cn/service-core/interfaces/logger"
@@ -14,9 +13,9 @@ type AuthServer struct {
 }
 
 func NewAuthServer(
-	content *content.ApplicationContent,
+	lg logger.Interface,
 ) *AuthServer {
 	return &AuthServer{
-		logger: logger.NewLoggerAdapter(content.Logger(), "grpc-server"),
+		logger: logger.NewLoggerAdapter(lg, "grpc-server"),
 	}
 }
