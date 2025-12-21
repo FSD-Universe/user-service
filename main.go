@@ -19,6 +19,7 @@ import (
 	"half-nothing.cn/service-core/database"
 	"half-nothing.cn/service-core/discovery"
 	grpcUtils "half-nothing.cn/service-core/grpc"
+	d "half-nothing.cn/service-core/interfaces/discovery"
 	"half-nothing.cn/service-core/interfaces/global"
 	"half-nothing.cn/service-core/jwt"
 	"half-nothing.cn/service-core/logger"
@@ -91,39 +92,89 @@ func main() {
 	} else {
 		go grpcUtils.StartGrpcServer(lg, cl, applicationConfig.ServerConfig.GrpcServerConfig, started, initFunc)
 	}
-	service := discovery.StartServiceDiscovery(lg, cl, started, utils.NewVersion(g.AppVersion), "user-service", applicationConfig.ServerConfig.GrpcServerConfig.Port)
 
-	emailServiceInfo, err := service.WaitForService("email-service", *g.WaitServiceTimeout)
-	if err != nil {
-		lg.Fatalf("fail to wait for email service: %v", err)
-		return
-	}
-	emailServiceConn, err := grpcUtils.StartGrpcClient(lg, emailServiceInfo.IP, emailServiceInfo.Port, applicationConfig.ClientConfig)
-	if err != nil {
-		lg.Fatalf("fail to start grpc client: %v", err)
-		_ = emailServiceConn.Close()
-		return
-	}
-	emailClient := pb.NewEmailClient(emailServiceConn)
-	contentBuilder.SetEmailClient(emailClient)
-	cl.Add("EmailService", func(_ context.Context) error { return emailServiceConn.Close() })
+	requiredServices := []string{g.EmailServiceName, g.AuditLogServiceName}
+	service := discovery.StartServiceDiscovery(
+		context.Background(),
+		lg,
+		cl,
+		started,
+		utils.NewVersion(g.AppVersion),
+		g.ServiceName,
+		applicationConfig.ServerConfig.GrpcServerConfig.Port,
+	)
 
-	auditLogServiceInfo, err := service.WaitForService("audit-service", *g.WaitServiceTimeout)
-	if err != nil {
-		lg.Fatalf("fail to wait for audit service: %v", err)
+	infos := service.WaitForServices(requiredServices, *g.WaitServiceTimeout)
+	if infos == nil {
 		return
 	}
-	auditLogServiceConn, err := grpcUtils.StartGrpcClient(lg, auditLogServiceInfo.IP, auditLogServiceInfo.Port, applicationConfig.ClientConfig)
+
+	connManager := grpcUtils.NewClientConnections(lg)
+	cl.Add("GrpcClient", connManager.Close)
+
+	emailConn, err := InitGrpcClient(applicationConfig, lg, infos[g.EmailServiceName])
 	if err != nil {
-		lg.Fatalf("fail to start grpc client: %v", err)
-		_ = auditLogServiceConn.Close()
+		lg.Fatalf("fail to start email grpc client: %v", err)
 		return
 	}
-	auditLogClient := pb.NewAuditLogClient(auditLogServiceConn)
-	contentBuilder.SetAuditLogClient(auditLogClient)
-	cl.Add("AuditLogService", func(_ context.Context) error { return auditLogServiceConn.Close() })
+	connManager.Add(g.EmailServiceName, emailConn)
+	contentBuilder.SetEmailClient(pb.NewEmailClient(emailConn))
+
+	auditConn, err := InitGrpcClient(applicationConfig, lg, infos[g.AuditLogServiceName])
+	if err != nil {
+		lg.Fatalf("fail to start audit log grpc client: %v", err)
+		return
+	}
+	connManager.Add(g.AuditLogServiceName, auditConn)
+	contentBuilder.SetAuditLogClient(pb.NewAuditLogClient(auditConn))
+
+	listener := discovery.NewServiceListener(
+		service.StatusChannel(),
+		discovery.KeepRequiredServiceOnline(
+			lg,
+			requiredServices,
+			service,
+			cl.Clean,
+			func(info *d.ServiceInfo) {
+				if info.Name == g.EmailServiceName {
+					emailConn, err := InitGrpcClient(applicationConfig, lg, info)
+					if err != nil {
+						lg.Fatalf("fail to start email grpc client: %v", err)
+						cl.Clean()
+						return
+					}
+					connManager.Add(g.EmailServiceName, emailConn)
+					contentBuilder.SetEmailClient(pb.NewEmailClient(emailConn))
+				}
+				if info.Name == g.AuditLogServiceName {
+					auditConn, err := InitGrpcClient(applicationConfig, lg, info)
+					if err != nil {
+						lg.Fatalf("fail to start audit log grpc client: %v", err)
+						cl.Clean()
+						return
+					}
+					connManager.Add(g.AuditLogServiceName, auditConn)
+					contentBuilder.SetAuditLogClient(pb.NewAuditLogClient(auditConn))
+				}
+			},
+		),
+	)
+	listener.Start(context.Background())
+	cl.Add("ServiceListener", listener.Stop)
 
 	go server.StartServer(contentBuilder.Build())
 
 	cl.Wait()
+}
+
+func InitGrpcClient(c *c.Config, lg *logger.Logger, info *d.ServiceInfo) (conn *grpc.ClientConn, err error) {
+	if c.TelemetryConfig.GrpcClientTrace {
+		conn, err = grpcUtils.StartGrpcClientWithTrace(lg, info.IP, info.Port, c.ClientConfig)
+	} else {
+		conn, err = grpcUtils.StartGrpcClient(lg, info.IP, info.Port, c.ClientConfig)
+	}
+	if err != nil {
+		lg.Fatalf("fail to get grpc client connection: %v", err)
+	}
+	return
 }

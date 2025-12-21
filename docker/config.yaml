@@ -23,6 +23,103 @@ global:
     # 是否使用本地时间而不是UTC时间
     local_time: true
 
+# 服务配置
+server:
+  # http服务配置
+  http:
+    # 监听地址
+    host: 0.0.0.0
+    # 监听端口
+    port: 8080
+    # 请求体大小限制
+    # 置空表示不限制
+    body_limit: 5M
+    # 请求频率限制(次/分钟)
+    # 0表示不限制
+    rate_limit: 20
+    # 代理类型
+    proxy_type: 0
+    # 允许的代理IP地址
+    # 本地回环地址、局域网地址和本地连接地址默认允许
+    trust_ips:
+      # 本地回环地址
+      # - "127.0.0.1/32"
+      # 局域网地址
+      # - "10.0.0.0/8"
+      # - "172.16.0.0/12"
+      # - "192.168.0.0/16"
+      # 本地连接地址
+      # - "169.254.0.0/16"
+      - "0.0.0.0/0"
+    # TLS配置
+    tls:
+      # 是否启用TLS
+      enable: false
+      # TLS证书文件
+      cert: ""
+      # TLS密钥文件
+      key: ""
+      # 是否强制使用TLS
+      force_https: false
+      # HSTS配置
+      hsts:
+        # 是否启用HSTS
+        enable: false
+        # HSTS过期时间（秒）
+        max_age: 5184000
+        # 是否包含子域名
+        include_subdomains: false
+  # grpc服务配置
+  grpc:
+    # 监听地址
+    host: 0.0.0.0
+    # 监听端口
+    port: 8081
+    # TLS配置
+    tls:
+      # 是否启用TLS
+      enable: false
+      # 是否启用双向认证
+      enable_mtls: false
+      # CA证书文件
+      ca: ""
+      # 私钥文件
+      cert: ""
+      # 公钥文件
+      key: ""
+
+# gRPC客户端配置
+client:
+  # 是否启用TLS
+  enable_tls: false
+  # 是否启用双向认证
+  enable_mtls: false
+  # CA证书文件
+  ca: ""
+  # 私钥文件
+  cert: ""
+  # 公钥文件
+  key: ""
+
+# http服务配置
+jwt:
+  # 签发者
+  issuer: service
+  # 签名方法
+  sign_method: HS256
+  # 签名密钥
+  secret: ""
+  # 公钥
+  public_key: public.pem
+  # 私钥
+  private_key: private.pem
+  # 是否仅验证
+  read_only: false
+  # token过期时间
+  expire: 1h
+  # 刷新token过期时间
+  refresh_expire: 24h
+
 database:
   # 数据库类型
   # sqlite3, mysql, postgresql
@@ -46,80 +143,6 @@ database:
   query_timeout: 10s
   # 连接池最大连接数
   max_connections: 32
-
-# 服务配置
-server:
-  # http服务配置
-  http:
-    # 是否启动
-    enable: true
-    # 监听地址
-    host: 0.0.0.0
-    # 监听端口
-    port: 8080
-    # 请求体大小限制
-    # 置空表示不限制
-    body_limit: 5MB
-    # 请求频率限制(次/分钟)
-    # 0表示不限制
-    rate_limit: 20
-    # 代理类型
-    proxy_type: 0
-    # 允许的代理IP地址
-    # 本地回环地址、局域网地址和本地连接地址默认允许
-    trust_ips:
-      # 本地回环地址
-      # - "127.0.0.1/32"
-      # 局域网地址
-      # - "10.0.0.0/8"
-      # - "172.16.0.0/12"
-      # - "192.168.0.0/16"
-      # 本地连接地址
-      # - "169.254.0.0/16"
-      - "0.0.0.0/0"
-    # SSL配置
-    ssl:
-      # 是否启用SSL
-      enable: false
-      # SSL证书文件
-      cert: ""
-      # SSL密钥文件
-      key: ""
-      # 是否强制使用SSL
-      force_https: false
-      # HSTS配置
-      hsts:
-        # 是否启用HSTS
-        enable: false
-        # HSTS过期时间（秒）
-        max_age: 5184000
-        # 是否包含子域名
-        include_subdomains: false
-  # grpc服务配置
-  grpc:
-    # 是否启动
-    enable: true
-    # 监听地址
-    host: 0.0.0.0
-    # 监听端口
-    port: 8081
-
-# http服务配置
-jwt:
-  # 签发者
-  issuer: service
-  # 签名方法
-  sign_method: HS256
-  # 签名密钥
-  secret: ""
-  # 公钥
-  public_key: public.pem
-  # 私钥
-  private_key: private.pem
-  # token过期时间
-  expire: 1h
-  # 刷新token过期时间
-  refresh_expire: 24h
 
 # 监控配置
 telemetry:
