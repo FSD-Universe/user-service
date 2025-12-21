@@ -1,0 +1,17 @@
+services:
+  user-service:
+    image: halfnothing/user-service:latest
+    container_name: user-service
+    networks:
+      - main
+    ports:
+      - "8080:8080" # 默认Http API端口
+      # - "8081:8081" # 默认Grpc端口
+      # 不建议对外暴露gRPC端口, 如需对外暴露gRPC端口, 推荐开启gRPC TLS或者gRPC mTLS
+    volumes:
+      - ./data:/service/data
+      - ./config.yaml:/service/config.yaml
+
+networks:
+  main:
+    driver: bridge
