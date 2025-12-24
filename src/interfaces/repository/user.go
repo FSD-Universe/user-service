@@ -49,4 +49,6 @@ type UserInterface interface {
 	repository.Base[*entity.User]
 	GetByIdOrCid(id uint) (*entity.User, error)
 	GetByUsernameOrEmail(usernameOrEmail string) (*entity.User, error)
+	CheckCidUsernameAndEmail(cid uint, username string, email string) (bool, error)
+	GetPages(pageNum int, pageSize int, search string) ([]*entity.User, int64, error)
 }

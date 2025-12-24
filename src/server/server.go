@@ -26,7 +26,7 @@ func StartServer(content *content.ApplicationContent) {
 	e.Logger.SetLevel(log.OFF)
 
 	http.SetEchoConfig(lg, e, c.ServerConfig.HttpServerConfig, nil)
-	jwtMidware, _, requireRefresh := http.GetJWTMiddleware(content.ClaimFactory())
+	jwtMidware, requireNoRefresh, requireRefresh := http.GetJWTMiddleware(content.ClaimFactory())
 	if c.TelemetryConfig.HttpServerTrace {
 		http.SetTelemetry(e, c.TelemetryConfig)
 	}
@@ -56,7 +56,17 @@ func StartServer(content *content.ApplicationContent) {
 	userGroup.POST("/token/fsd", authController.UserFsdLogin)
 	userGroup.GET("/token", authController.RefreshToken, jwtMidware, requireRefresh)
 
-	userGroup.POST("", userController.UserRegister)
+	userGroup.POST("", userController.Register)
+	userGroup.GET("", userController.GetPages, jwtMidware, requireNoRefresh)
+	userGroup.GET("/availability", userController.CheckAvailability)
+	userGroup.POST("/password", userController.ResetPassword)
+	userGroup.PUT("/password", userController.UpdatePassword, jwtMidware, requireNoRefresh)
+
+	profileGroup := userGroup.Group("/profiles")
+	profileGroup.GET("/self", userController.GetSelfData, jwtMidware, requireNoRefresh)
+	profileGroup.GET("/:id", userController.GetData, jwtMidware, requireNoRefresh)
+	profileGroup.PATCH("/self", userController.UpdateSelfData, jwtMidware, requireNoRefresh)
+	profileGroup.PATCH("/:id", userController.UpdateData, jwtMidware, requireNoRefresh)
 
 	http.SetUnmatchedRoute(e)
 	http.SetCleaner(content.Cleaner(), e)

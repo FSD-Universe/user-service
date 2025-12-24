@@ -11,5 +11,13 @@ import (
 )
 
 type UserInterface interface {
-	Register(user *DTO.UserRegister) *dto.ApiResponse[bool]
+	Register(data *DTO.UserRegister) *dto.ApiResponse[bool]
+	CheckAvailability(data *DTO.UserCheckAvailability) *dto.ApiResponse[bool]
+	ResetPassword(data *DTO.UserResetPassword) *dto.ApiResponse[bool]
+	GetPages(data *DTO.GetUserPage) *dto.ApiResponse[*DTO.GetUserPageResponse]
+	GetSelfData(data *DTO.GetCurrentUserData) *dto.ApiResponse[*DTO.BaseUserInfo]
+	GetData(data *DTO.GetUserData) *dto.ApiResponse[*DTO.UserInfo]
+	UpdateSelfData(data *DTO.UpdateCurrentUserData) *dto.ApiResponse[*DTO.BaseUserInfo]
+	UpdateData(data *DTO.UpdateUserData) *dto.ApiResponse[bool]
+	UpdatePassword(data *DTO.UpdateUserPassword) *dto.ApiResponse[bool]
 }

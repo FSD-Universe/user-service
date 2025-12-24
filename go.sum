@@ -244,3 +244,7 @@ half-nothing.cn/service-core v0.4.7 h1:/jiSC4MOfvq33oFQJLlsz6XX8BvX/AoazBStpsNCS
 half-nothing.cn/service-core v0.4.7/go.mod h1:IWb2DO0iOuRocgQiM1Sjt48/H9cDOmtVTinp0kgey5s=
 half-nothing.cn/service-core v0.4.8 h1:mVyngJOW4RRrIvGuR08zCEE7c0bRY9z41v+bWJTTzz0=
 half-nothing.cn/service-core v0.4.8/go.mod h1:IWb2DO0iOuRocgQiM1Sjt48/H9cDOmtVTinp0kgey5s=
+half-nothing.cn/service-core v0.5.0 h1:8FdND+DI/6KLHssW5dvTbFKC+C7QmQU8d8t0FTK9Kc0=
+half-nothing.cn/service-core v0.5.0/go.mod h1:IWb2DO0iOuRocgQiM1Sjt48/H9cDOmtVTinp0kgey5s=
+half-nothing.cn/service-core v0.5.1 h1:LuV5oiAfhfDBqKS+lZxvQk43sgV8u8LcFKzIBL2DRJU=
+half-nothing.cn/service-core v0.5.1/go.mod h1:IWb2DO0iOuRocgQiM1Sjt48/H9cDOmtVTinp0kgey5s=

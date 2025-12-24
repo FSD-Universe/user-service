@@ -140,19 +140,35 @@ message Welcome {
   string cid = 2;
 }
 
+message EmailChange {
+  string targetEmail = 1;
+  string cid = 2;
+  string email = 3;
+  string time = 4;
+  string ip = 5;
+  string userAgent = 6;
+}
+
 message SendResponse {
   bool success = 1;
 }
 
 message VerifyCode {
-  int32 cid = 1;
-  string code = 2;
-  string email = 3;
+  string code = 1;
+  string email = 2;
 }
 
 message VerifyResponse {
   bool success = 1;
   int32 code = 2; // 0 = success, 1 = code expired or not found, 2 = invalid code, 3 = unknown error
+}
+
+message RemoveVerifyCode {
+  string email = 1;
+}
+
+message RemoveVerifyCodeResponse {
+  bool success = 1;
 }
 
 service Email {
@@ -173,5 +189,7 @@ service Email {
   rpc SendRoleChange(RoleChange) returns (SendResponse);
   rpc SendTicketReply(TicketReply) returns (SendResponse);
   rpc SendWelcome(Welcome) returns (SendResponse);
+  rpc SendEmailChange(EmailChange) returns (SendResponse);
   rpc VerifyEmailCode(VerifyCode) returns (VerifyResponse);
+  rpc RemoveEmailCode(RemoveVerifyCode) returns (RemoveVerifyCodeResponse);
 }
