@@ -75,7 +75,7 @@ func (repo *RoleRepository) DeleteRole(roleId uint) error {
 func (repo *RoleRepository) GetByIds(roleIds []uint) (roles []*entity.Role, err error) {
 	roles = make([]*entity.Role, 0, len(roleIds))
 	err = repo.QueryWithTransaction(func(tx *gorm.DB) error {
-		return tx.Find(roles, roleIds).Error
+		return tx.Find(&roles, roleIds).Error
 	})
 	return
 }

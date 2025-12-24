@@ -219,6 +219,7 @@ func (service *PermissionService) getUserAndRoles(userId uint, roleIds []uint) (
 	return roles, targetUser, nil
 }
 
+//goland:noinspection DuplicatedCode
 func (service *PermissionService) GrantUserRole(data *DTO.GrantUserRole) *dto.ApiResponse[bool] {
 	perm := permission.Permission(data.Permission)
 	if !perm.HasPermission(permission.UserEditRole) {
@@ -269,6 +270,7 @@ func (service *PermissionService) GrantUserRole(data *DTO.GrantUserRole) *dto.Ap
 	return dto.NewApiResponse(dto.SuccessHandleRequest, true)
 }
 
+//goland:noinspection DuplicatedCode
 func (service *PermissionService) RevokeUserRole(data *DTO.RevokeUserRole) *dto.ApiResponse[bool] {
 	perm := permission.Permission(data.Permission)
 	if !perm.HasPermission(permission.UserEditRole) {
@@ -334,6 +336,8 @@ func (service *PermissionService) getRoleAndUsers(roleId uint, userIds []uint) (
 
 	return users, targetRole, nil
 }
+
+//goland:noinspection DuplicatedCode
 func (service *PermissionService) GrantRoleUser(data *DTO.GrantRoleUser) *dto.ApiResponse[bool] {
 	perm := permission.Permission(data.Permission)
 	if !perm.HasPermission(permission.UserEditRole) {
@@ -391,6 +395,7 @@ func (service *PermissionService) GrantRoleUser(data *DTO.GrantRoleUser) *dto.Ap
 	return dto.NewApiResponse(dto.SuccessHandleRequest, true)
 }
 
+//goland:noinspection DuplicatedCode
 func (service *PermissionService) RevokeRoleUser(data *DTO.RevokeRoleUser) *dto.ApiResponse[bool] {
 	perm := permission.Permission(data.Permission)
 	if !perm.HasPermission(permission.UserEditRole) {
