@@ -13,6 +13,7 @@ import (
 	"user-service/src/interfaces/server/service"
 
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 	"half-nothing.cn/service-core/interfaces/http/dto"
 	"half-nothing.cn/service-core/interfaces/http/jwt"
 	"half-nothing.cn/service-core/interfaces/logger"
@@ -40,7 +41,7 @@ func (s *AuthService) Login(form *DTO.UserLogin) *dto.ApiResponse[*DTO.UserLogin
 	userId := repository.GetUserId(form.Username)
 	user, err := userId.GetUser(s.userRepo)
 	if err != nil {
-		if errors.Is(err, repository.ErrUserNotFound) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			s.logger.Errorf("UserLogin handle fail, %s user not found", form.Username)
 			return dto.NewApiResponse[*DTO.UserLoginResponse](service.ErrUsernameOrPasswordError, nil)
 		}
@@ -115,7 +116,7 @@ func (s *AuthService) FsdLogin(form *DTO.UserFsdLogin) *DTO.UserFsdLoginResponse
 	userId := repository.GetUserId(form.Cid)
 	user, err := userId.GetUser(s.userRepo)
 	if err != nil {
-		if errors.Is(err, repository.ErrUserNotFound) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			s.logger.Errorf("FsdLogin handle fail, %s user not found", form.Cid)
 			return &DTO.UserFsdLoginResponse{Success: false, ErrorMsg: "username or password incorrect"}
 		}

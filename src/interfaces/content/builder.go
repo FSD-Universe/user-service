@@ -42,6 +42,11 @@ func (builder *ApplicationContentBuilder) SetUserRepo(userRepo repository.UserIn
 	return builder
 }
 
+func (builder *ApplicationContentBuilder) SetRoleRepo(roleRepo repository.RoleInterface) *ApplicationContentBuilder {
+	builder.content.roleRepo = roleRepo
+	return builder
+}
+
 func (builder *ApplicationContentBuilder) SetJwtClaimFactory(claimFactory jwt.ClaimFactoryInterface) *ApplicationContentBuilder {
 	builder.content.claimFactory = claimFactory
 	return builder

@@ -16,6 +16,7 @@ import (
 	"user-service/src/interfaces/repository"
 	DTO "user-service/src/interfaces/server/dto"
 
+	"gorm.io/gorm"
 	"half-nothing.cn/service-core/interfaces/database/entity"
 	"half-nothing.cn/service-core/interfaces/http/dto"
 	"half-nothing.cn/service-core/interfaces/logger"
@@ -163,7 +164,7 @@ func (u *UserService) ResetPassword(form *DTO.UserResetPassword) *dto.ApiRespons
 	user, err := u.repo.GetByUsernameOrEmail(form.Email)
 	if err != nil {
 		u.logger.Errorf("ResetPassword handle fail, get user err, %v", err)
-		if errors.Is(err, repository.ErrUserNotFound) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewApiResponse(ErrUserNotExist, false)
 		}
 		return dto.NewApiResponse(ErrDataBaseError, false)
@@ -245,7 +246,7 @@ func (u *UserService) GetSelfData(data *DTO.GetCurrentUserData) *dto.ApiResponse
 	user, err := u.repo.GetById(data.Uid)
 	if err != nil {
 		u.logger.Errorf("GetSelfData handle fail, get user err, %v", err)
-		if errors.Is(err, repository.ErrUserNotFound) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewApiResponse[*DTO.BaseUserInfo](ErrUserNotFound, nil)
 		}
 		return dto.NewApiResponse[*DTO.BaseUserInfo](ErrDataBaseError, nil)
@@ -264,7 +265,7 @@ func (u *UserService) GetData(data *DTO.GetUserData) *dto.ApiResponse[*DTO.UserI
 	user, err := u.repo.GetById(data.Id)
 	if err != nil {
 		u.logger.Errorf("GetData handle fail, get user err, %v", err)
-		if errors.Is(err, repository.ErrUserNotFound) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewApiResponse[*DTO.UserInfo](ErrUserNotFound, nil)
 		}
 		return dto.NewApiResponse[*DTO.UserInfo](ErrDataBaseError, nil)
@@ -278,7 +279,7 @@ func (u *UserService) UpdateSelfData(data *DTO.UpdateCurrentUserData) *dto.ApiRe
 	user, err := u.repo.GetById(data.Uid)
 	if err != nil {
 		u.logger.Errorf("UpdateSelfData handle fail, get user err, %v", err)
-		if errors.Is(err, repository.ErrUserNotFound) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewApiResponse[*DTO.BaseUserInfo](ErrUserNotFound, nil)
 		}
 		return dto.NewApiResponse[*DTO.BaseUserInfo](ErrDataBaseError, nil)
@@ -353,7 +354,7 @@ func (u *UserService) UpdateData(data *DTO.UpdateUserData) *dto.ApiResponse[bool
 	user, err := u.repo.GetById(data.Id)
 	if err != nil {
 		u.logger.Errorf("UpdateData handle fail, get user err, %v", err)
-		if errors.Is(err, repository.ErrUserNotFound) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewApiResponse[bool](ErrUserNotFound, false)
 		}
 		return dto.NewApiResponse[bool](ErrDataBaseError, false)
@@ -417,7 +418,7 @@ func (u *UserService) UpdatePassword(data *DTO.UpdateUserPassword) *dto.ApiRespo
 	user, err := u.repo.GetById(data.Uid)
 	if err != nil {
 		u.logger.Errorf("UpdatePassword handle fail, get user err, %v", err)
-		if errors.Is(err, repository.ErrUserNotFound) {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewApiResponse[bool](ErrUserNotFound, false)
 		}
 		return dto.NewApiResponse[bool](ErrDataBaseError, false)

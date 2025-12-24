@@ -11,6 +11,8 @@ import (
 	"half-nothing.cn/service-core/interfaces/database/entity"
 	"half-nothing.cn/service-core/interfaces/http/dto"
 	"half-nothing.cn/service-core/interfaces/http/jwt"
+	"half-nothing.cn/service-core/permission"
+	"half-nothing.cn/service-core/utils"
 )
 
 type BaseUserInfo struct {
@@ -36,7 +38,11 @@ func (b *BaseUserInfo) FromUserEntity(user *entity.User) *BaseUserInfo {
 		b.QQ = *user.QQ
 	}
 	b.Rating = user.Rating
-	b.Permission = int(user.Permission)
+	perm := permission.Permission(user.Permission)
+	utils.ForEach(user.Roles, func(index int, role *entity.UserRole) {
+		perm.Merge(permission.Permission(role.Role.Permission))
+	})
+	b.Permission = int(perm)
 	b.RegisterTime = user.CreatedAt
 	if user.LastLoginTime.Valid {
 		b.LastLoginTime = &user.LastLoginTime.Time
@@ -56,8 +62,9 @@ func (b *BaseUserInfo) FromUserEntity(user *entity.User) *BaseUserInfo {
 
 type UserInfo struct {
 	BaseUserInfo
-	Banned     bool       `json:"banned"`
-	BannedTime *time.Time `json:"banned_time"`
+	Banned     bool            `json:"banned"`
+	BannedTime *time.Time      `json:"banned_time"`
+	Roles      []*BaseRoleInfo `json:"roles"`
 }
 
 func (u *UserInfo) FromUserEntity(user *entity.User) *UserInfo {
@@ -66,6 +73,11 @@ func (u *UserInfo) FromUserEntity(user *entity.User) *UserInfo {
 	if user.BannedUntil.Valid {
 		u.BannedTime = &user.BannedUntil.Time
 	}
+	u.Roles = make([]*BaseRoleInfo, len(user.Roles))
+	utils.ForEach(user.Roles, func(index int, role *entity.UserRole) {
+		u.Roles[index] = &BaseRoleInfo{}
+		u.Roles[index].FromRoleEntity(role.Role)
+	})
 	return u
 }
 

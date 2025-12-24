@@ -2,9 +2,7 @@
 package repository
 
 import (
-	"errors"
 	"time"
-	repos "user-service/src/interfaces/repository"
 
 	"gorm.io/gorm"
 	"half-nothing.cn/service-core/database"
@@ -12,6 +10,11 @@ import (
 	"half-nothing.cn/service-core/interfaces/database/repository"
 	"half-nothing.cn/service-core/interfaces/logger"
 )
+
+var rolePreloadFunc = func(db gorm.PreloadBuilder) error {
+	db.Select("permission")
+	return nil
+}
 
 type UserRepository struct {
 	*database.BaseRepository[*entity.User]
@@ -35,11 +38,8 @@ func (repo *UserRepository) GetById(id uint) (*entity.User, error) {
 	}
 	user := &entity.User{ID: id}
 	err := repo.Query(func(tx *gorm.DB) error {
-		return tx.Preload("CurrentAvatar").First(user).Error
+		return tx.Preload("Roles").Preload("CurrentAvatar").First(user).Error
 	})
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		err = repos.ErrUserNotFound
-	}
 	return user, err
 }
 
@@ -49,11 +49,13 @@ func (repo *UserRepository) GetByIdOrCid(id uint) (*entity.User, error) {
 	}
 	user := &entity.User{}
 	err := repo.Query(func(tx *gorm.DB) error {
-		return tx.Preload("CurrentAvatar").Where("id = ? OR cid = ?", id, id).First(user).Error
+		return tx.Preload("Roles").
+			Preload("UserRole.Role", rolePreloadFunc).
+			Joins("CurrentAvatar").
+			Where("id = ? OR cid = ?", id, id).
+			First(user).
+			Error
 	})
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		err = repos.ErrUserNotFound
-	}
 	return user, err
 }
 
@@ -63,11 +65,13 @@ func (repo *UserRepository) GetByUsernameOrEmail(usernameOrEmail string) (*entit
 	}
 	user := &entity.User{}
 	err := repo.Query(func(tx *gorm.DB) error {
-		return tx.Preload("CurrentAvatar").Where("username = ? OR email = ?", usernameOrEmail, usernameOrEmail).First(user).Error
+		return tx.Preload("Roles").
+			Preload("UserRole.Role", rolePreloadFunc).
+			Joins("CurrentAvatar").
+			Where("username = ? OR email = ?", usernameOrEmail, usernameOrEmail).
+			First(user).
+			Error
 	})
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		err = repos.ErrUserNotFound
-	}
 	return user, err
 }
 
@@ -93,12 +97,17 @@ func (repo *UserRepository) GetPages(pageNum int, pageSize int, search string) (
 	if search != "" {
 		queryFunc = func(tx *gorm.DB) *gorm.DB {
 			return tx.Where("username LIKE ? OR email LIKE ?", "%"+search+"%", "%"+search+"%").
-				Preload("CurrentAvatar").
+				Preload("Roles").
+				Preload("UserRole.Role", rolePreloadFunc).
+				Joins("CurrentAvatar").
 				Order("cid")
 		}
 	} else {
 		queryFunc = func(tx *gorm.DB) *gorm.DB {
-			return tx.Preload("CurrentAvatar").Order("cid")
+			return tx.Preload("Roles").
+				Preload("UserRole.Role", rolePreloadFunc).
+				Joins("CurrentAvatar").
+				Order("cid")
 		}
 	}
 	total, err = repo.QueryWithPagination(repo.pageReq, database.NewPage[*entity.User](pageNum, pageSize, &users, &entity.User{}, queryFunc))

@@ -2,24 +2,9 @@
 package repository
 
 import (
-	"errors"
-
 	"half-nothing.cn/service-core/interfaces/database/entity"
 	"half-nothing.cn/service-core/interfaces/database/repository"
 	"half-nothing.cn/service-core/utils"
-)
-
-var (
-	// ErrUserNotFound 用户不存在
-	ErrUserNotFound = errors.New("user does not exist")
-	// ErrIdentifierTaken 三元组一致性检查失败
-	ErrIdentifierTaken = errors.New("user identifiers have been used")
-	// ErrIdentifierCheck 三元组一致性检查异常
-	ErrIdentifierCheck = errors.New("identifier check error")
-	// ErrPasswordEncode 密码编码错误
-	ErrPasswordEncode = errors.New("password encode error")
-	// ErrOldPassword 原密码错误
-	ErrOldPassword = errors.New("old password error")
 )
 
 type UserId interface {

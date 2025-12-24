@@ -18,7 +18,8 @@ type ApplicationContent struct {
 	cleaner        cleaner.Interface                  // 清理器
 	logger         logger.Interface                   // 日志
 	claimFactory   jwt.ClaimFactoryInterface          // JWT 令牌工厂
-	userRepo       repository.UserInterface           // 用户数据库操作
+	userRepo       repository.UserInterface           // 用户数据库
+	roleRepo       repository.RoleInterface           // 角色数据库
 	emailClient    grpc.EmailClient                   // 邮件服务
 	auditLogClient grpc.AuditLogClient                // 审计日志服务
 }
@@ -37,6 +38,10 @@ func (app *ApplicationContent) ClaimFactory() jwt.ClaimFactoryInterface {
 
 func (app *ApplicationContent) UserRepo() repository.UserInterface {
 	return app.userRepo
+}
+
+func (app *ApplicationContent) RoleRepo() repository.RoleInterface {
+	return app.roleRepo
 }
 
 func (app *ApplicationContent) EmailClient() grpc.EmailClient {

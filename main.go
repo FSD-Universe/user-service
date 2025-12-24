@@ -81,7 +81,8 @@ func main() {
 		SetCleaner(cl).
 		SetLogger(lg).
 		SetJwtClaimFactory(jwt.NewClaimFactory(applicationConfig.JwtConfig)).
-		SetUserRepo(repository.NewUserRepository(lg, db, applicationConfig.DatabaseConfig.QueryTimeoutDuration))
+		SetUserRepo(repository.NewUserRepository(lg, db, applicationConfig.DatabaseConfig.QueryTimeoutDuration)).
+		SetRoleRepo(repository.NewRoleRepository(lg, db, applicationConfig.DatabaseConfig.QueryTimeoutDuration))
 
 	started := make(chan bool)
 	initFunc := func(s *grpc.Server) {
