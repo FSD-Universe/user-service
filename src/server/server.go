@@ -50,12 +50,35 @@ func StartServer(content *content.ApplicationContent) {
 		),
 	)
 
+	roleController := controller.NewRoleController(
+		content.Logger(),
+		service.NewRoleService(
+			content.Logger(),
+			content.RoleRepo(),
+			content.AuditLogClient(),
+		),
+	)
+
+	permissionController := controller.NewPermissionController(
+		content.Logger(),
+		service.NewPermissionService(
+			content.Logger(),
+			content.UserRepo(),
+			content.RoleRepo(),
+			content.EmailClient(),
+			content.AuditLogClient(),
+		),
+	)
+
 	apiGroup := e.Group("/api/v1")
 	userGroup := apiGroup.Group("/users")
+
+	// 认证接口
 	userGroup.POST("/token", authController.UserLogin)
 	userGroup.POST("/token/fsd", authController.UserFsdLogin)
 	userGroup.GET("/token", authController.RefreshToken, jwtMidware, requireRefresh)
 
+	// 用户接口
 	userGroup.POST("", userController.Register)
 	userGroup.GET("", userController.GetPages, jwtMidware, requireNoRefresh)
 	userGroup.GET("/availability", userController.CheckAvailability)
@@ -67,6 +90,23 @@ func StartServer(content *content.ApplicationContent) {
 	profileGroup.GET("/:id", userController.GetData, jwtMidware, requireNoRefresh)
 	profileGroup.PATCH("/self", userController.UpdateSelfData, jwtMidware, requireNoRefresh)
 	profileGroup.PATCH("/:id", userController.UpdateData, jwtMidware, requireNoRefresh)
+
+	// 角色接口
+	roleGroup := apiGroup.Group("/roles")
+	roleGroup.GET("", roleController.GetPages, jwtMidware, requireNoRefresh)
+	roleGroup.GET("/:id", roleController.GetById, jwtMidware, requireNoRefresh)
+	roleGroup.POST("", roleController.Create, jwtMidware, requireNoRefresh)
+	roleGroup.PATCH("/:id", roleController.Update, jwtMidware, requireNoRefresh)
+	roleGroup.DELETE("/:id", roleController.Delete, jwtMidware, requireNoRefresh)
+
+	// 权限接口
+	userGroup.PATCH("/:id/permissions", permissionController.EditUserPermission, jwtMidware, requireNoRefresh)
+	userGroup.PATCH("/:id/roles", permissionController.GrantUserRole, jwtMidware, requireNoRefresh)
+	userGroup.DELETE("/:id/roles", permissionController.RevokeUserRole, jwtMidware, requireNoRefresh)
+
+	roleGroup.PATCH("/:id/permissions", permissionController.EditRolePermission, jwtMidware, requireNoRefresh)
+	roleGroup.PATCH("/:id/users", permissionController.GrantRoleUser, jwtMidware, requireNoRefresh)
+	roleGroup.DELETE("/:id/users", permissionController.RevokeRoleUser, jwtMidware, requireNoRefresh)
 
 	http.SetUnmatchedRoute(e)
 	http.SetCleaner(content.Cleaner(), e)

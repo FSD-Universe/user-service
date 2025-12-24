@@ -1098,7 +1098,7 @@ func (x *PermissionChange) GetContact() string {
 
 type RoleChange struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TargetEmail   string                 `protobuf:"bytes,1,opt,name=targetEmail,proto3" json:"targetEmail,omitempty"`
+	TargetEmail   []string               `protobuf:"bytes,1,rep,name=targetEmail,proto3" json:"targetEmail,omitempty"`
 	Cid           string                 `protobuf:"bytes,2,opt,name=cid,proto3" json:"cid,omitempty"`
 	Roles         string                 `protobuf:"bytes,3,opt,name=roles,proto3" json:"roles,omitempty"`
 	Operator      string                 `protobuf:"bytes,4,opt,name=operator,proto3" json:"operator,omitempty"`
@@ -1137,11 +1137,11 @@ func (*RoleChange) Descriptor() ([]byte, []int) {
 	return file_email_proto_rawDescGZIP(), []int{14}
 }
 
-func (x *RoleChange) GetTargetEmail() string {
+func (x *RoleChange) GetTargetEmail() []string {
 	if x != nil {
 		return x.TargetEmail
 	}
-	return ""
+	return nil
 }
 
 func (x *RoleChange) GetCid() string {
@@ -1706,7 +1706,7 @@ const file_email_proto_rawDesc = "" +
 	"\acontact\x18\x05 \x01(\tR\acontact\"\x8c\x01\n" +
 	"\n" +
 	"RoleChange\x12 \n" +
-	"\vtargetEmail\x18\x01 \x01(\tR\vtargetEmail\x12\x10\n" +
+	"\vtargetEmail\x18\x01 \x03(\tR\vtargetEmail\x12\x10\n" +
 	"\x03cid\x18\x02 \x01(\tR\x03cid\x12\x14\n" +
 	"\x05roles\x18\x03 \x01(\tR\x05roles\x12\x1a\n" +
 	"\boperator\x18\x04 \x01(\tR\boperator\x12\x18\n" +

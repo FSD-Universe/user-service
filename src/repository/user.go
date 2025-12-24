@@ -113,3 +113,27 @@ func (repo *UserRepository) GetPages(pageNum int, pageSize int, search string) (
 	total, err = repo.QueryWithPagination(repo.pageReq, database.NewPage[*entity.User](pageNum, pageSize, &users, &entity.User{}, queryFunc))
 	return
 }
+
+func (repo *UserRepository) GrantRole(userId uint, roleIds []uint) error {
+	userRoles := make([]*entity.UserRole, len(roleIds))
+	for i, roleId := range roleIds {
+		userRoles[i] = &entity.UserRole{UserId: userId, RoleId: roleId}
+	}
+	return repo.QueryWithTransaction(func(tx *gorm.DB) error {
+		return tx.Create(userRoles).Error
+	})
+}
+
+func (repo *UserRepository) RevokeRole(userId uint, roleIds []uint) error {
+	return repo.QueryWithTransaction(func(tx *gorm.DB) error {
+		return tx.Delete(&entity.UserRole{}, "user_id = ? AND role_id IN ?", userId, roleIds).Error
+	})
+}
+
+func (repo *UserRepository) GetByIds(userIds []uint) (users []*entity.User, err error) {
+	users = make([]*entity.User, 0, len(userIds))
+	err = repo.Query(func(tx *gorm.DB) error {
+		return tx.Find(&users, userIds).Error
+	})
+	return
+}

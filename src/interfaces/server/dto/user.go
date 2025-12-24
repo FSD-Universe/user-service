@@ -23,7 +23,7 @@ type BaseUserInfo struct {
 	AvatarUrl     string     `json:"avatar_url"`
 	QQ            string     `json:"qq"`
 	Rating        int        `json:"rating"`
-	Permission    int        `json:"permission"`
+	Permission    uint64     `json:"permission"`
 	RegisterTime  time.Time  `json:"register_time"`
 	LastLoginTime *time.Time `json:"last_login_time"`
 	LastLoginIp   *string    `json:"last_login_ip"`
@@ -42,7 +42,7 @@ func (b *BaseUserInfo) FromUserEntity(user *entity.User) *BaseUserInfo {
 	utils.ForEach(user.Roles, func(index int, role *entity.UserRole) {
 		perm.Merge(permission.Permission(role.Role.Permission))
 	})
-	b.Permission = int(perm)
+	b.Permission = uint64(perm)
 	b.RegisterTime = user.CreatedAt
 	if user.LastLoginTime.Valid {
 		b.LastLoginTime = &user.LastLoginTime.Time

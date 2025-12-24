@@ -14,7 +14,8 @@ type RoleInterface interface {
 	GetPages(pageNum int, pageSize int, search string) ([]*entity.Role, int64, error)
 	SetPermission(roleId uint, permission uint64) error
 	GetRoleUsers(roleId uint) ([]*entity.User, error)
-	GrantUser(roleId uint, userId uint) error
-	RevokeUser(roleId uint, userId uint) error
 	DeleteRole(roleId uint) error
+	GetByIds(roleIds []uint) ([]*entity.Role, error)
+	GrantUser(roleId uint, userId []uint) error
+	RevokeUser(roleId uint, userId []uint) error
 }

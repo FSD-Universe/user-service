@@ -36,4 +36,7 @@ type UserInterface interface {
 	GetByUsernameOrEmail(usernameOrEmail string) (*entity.User, error)
 	CheckCidUsernameAndEmail(cid uint, username string, email string) (bool, error)
 	GetPages(pageNum int, pageSize int, search string) ([]*entity.User, int64, error)
+	GrantRole(userId uint, roleIds []uint) error
+	RevokeRole(userId uint, roleIds []uint) error
+	GetByIds(userIds []uint) ([]*entity.User, error)
 }

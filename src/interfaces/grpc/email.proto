@@ -121,7 +121,7 @@ message PermissionChange {
 }
 
 message RoleChange {
-  string targetEmail = 1;
+  repeated string targetEmail = 1;
   string cid = 2;
   string roles = 3;
   string operator = 4;

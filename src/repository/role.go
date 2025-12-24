@@ -35,18 +35,6 @@ func (repo *RoleRepository) SetPermission(roleId uint, permission uint64) error 
 	})
 }
 
-func (repo *RoleRepository) GrantUser(roleId uint, userId uint) error {
-	return repo.QueryWithTransaction(func(tx *gorm.DB) error {
-		return tx.Create(&entity.UserRole{UserId: userId, RoleId: roleId}).Error
-	})
-}
-
-func (repo *RoleRepository) RevokeUser(roleId uint, userId uint) error {
-	return repo.QueryWithTransaction(func(tx *gorm.DB) error {
-		return tx.Delete(&entity.UserRole{}, "user_id = ? AND role_id = ?", userId, roleId).Error
-	})
-}
-
 func (repo *RoleRepository) GetPages(pageNum int, pageSize int, search string) (roles []*entity.Role, total int64, err error) {
 	roles = make([]*entity.Role, 0, pageSize)
 	var queryFunc func(tx *gorm.DB) *gorm.DB
@@ -81,5 +69,29 @@ func (repo *RoleRepository) DeleteRole(roleId uint) error {
 			return err
 		}
 		return tx.Delete(&entity.Role{ID: roleId}).Error
+	})
+}
+
+func (repo *RoleRepository) GetByIds(roleIds []uint) (roles []*entity.Role, err error) {
+	roles = make([]*entity.Role, 0, len(roleIds))
+	err = repo.QueryWithTransaction(func(tx *gorm.DB) error {
+		return tx.Find(roles, roleIds).Error
+	})
+	return
+}
+
+func (repo *RoleRepository) GrantUser(roleId uint, userIds []uint) error {
+	userRoles := make([]*entity.UserRole, len(userIds))
+	for i, userId := range userIds {
+		userRoles[i] = &entity.UserRole{UserId: userId, RoleId: roleId}
+	}
+	return repo.QueryWithTransaction(func(tx *gorm.DB) error {
+		return tx.Create(userRoles).Error
+	})
+}
+
+func (repo *RoleRepository) RevokeUser(roleId uint, userIds []uint) error {
+	return repo.QueryWithTransaction(func(tx *gorm.DB) error {
+		return tx.Delete(&entity.UserRole{}, "role_id = ? AND user_id IN ?", roleId, userIds).Error
 	})
 }

@@ -142,6 +142,11 @@ func (service *RoleService) Update(role *DTO.UpdateRole) *dto.ApiResponse[bool] 
 		return dto.NewApiResponse(ErrDataBaseError, false)
 	}
 
+	if roleEntity.Name == role.Name && roleEntity.Comment == role.Description {
+		service.logger.Infof("user %04d update role %s(%s) no change", role.Cid, role.Name, role.Description)
+		return dto.NewApiResponse(dto.SuccessHandleRequest, true)
+	}
+
 	oldValue := fmt.Sprintf("%s(%s)", roleEntity.Name, roleEntity.Comment)
 
 	roleEntity.Name = role.Name
