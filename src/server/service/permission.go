@@ -365,7 +365,7 @@ func (service *PermissionService) GrantRoleUser(data *DTO.GrantRoleUser) *dto.Ap
 		_, err := service.client.AuditLogClient().Log(ctx, &grpc.AuditLogRequest{
 			Event:     entity.AuditEventRoleGrant.Value,
 			Subject:   fmt.Sprintf("%04d", data.Cid),
-			Object:    fmt.Sprintf("%s: %d", role.Name, role.ID),
+			Object:    fmt.Sprintf("%d(%s)", role.ID, role.Name),
 			Ip:        data.Ip,
 			UserAgent: data.UserAgent,
 			NewValue:  strings.Join(userCids, ","),
@@ -423,7 +423,7 @@ func (service *PermissionService) RevokeRoleUser(data *DTO.RevokeRoleUser) *dto.
 		_, err := service.client.AuditLogClient().Log(ctx, &grpc.AuditLogRequest{
 			Event:     entity.AuditEventRoleRevoke.Value,
 			Subject:   fmt.Sprintf("%04d", data.Cid),
-			Object:    fmt.Sprintf("%s: %d", role.Name, role.ID),
+			Object:    fmt.Sprintf("%d(%s)", role.ID, role.Name),
 			Ip:        data.Ip,
 			UserAgent: data.UserAgent,
 			OldValue:  strings.Join(userCids, ","),
