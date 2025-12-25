@@ -3,7 +3,6 @@ package content
 
 import (
 	c "user-service/src/interfaces/config"
-	"user-service/src/interfaces/grpc"
 	"user-service/src/interfaces/repository"
 
 	"half-nothing.cn/service-core/interfaces/cleaner"
@@ -52,16 +51,10 @@ func (builder *ApplicationContentBuilder) SetJwtClaimFactory(claimFactory jwt.Cl
 	return builder
 }
 
-func (builder *ApplicationContentBuilder) SetEmailClient(emailClient grpc.EmailClient) *ApplicationContentBuilder {
-	builder.content.emailClient = emailClient
+func (builder *ApplicationContentBuilder) SetGrpcClientManager(grpcClientManager *GrpcClientManager) *ApplicationContentBuilder {
+	builder.content.grpcClientManager = grpcClientManager
 	return builder
 }
-
-func (builder *ApplicationContentBuilder) SetAuditLogClient(auditLogClient grpc.AuditLogClient) *ApplicationContentBuilder {
-	builder.content.auditLogClient = auditLogClient
-	return builder
-}
-
 func (builder *ApplicationContentBuilder) Build() *ApplicationContent {
 	return builder.content
 }

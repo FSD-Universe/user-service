@@ -1,4 +1,4 @@
-FROM golang:1.25.4-alpine AS builder
+FROM golang:1.25.5-alpine AS builder
 
 WORKDIR /build
 
@@ -10,7 +10,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -ldflags="-w -s" -tags "http httpjwt grpc database telemetry permission" -o /build/user-service .
+RUN go build -ldflags="-w -s" -tags "http httpjwt database telemetry permission" -o /build/user-service .
 
 FROM alpine:latest AS runtime
 

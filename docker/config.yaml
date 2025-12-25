@@ -22,6 +22,11 @@ global:
     compress: true
     # 是否使用本地时间而不是UTC时间
     local_time: true
+  discovery:
+    id: user-service-1
+    name: user-service
+    http_port: 8080
+    grpc_port: 8081
 
 # 服务配置
 server:
