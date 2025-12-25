@@ -27,7 +27,7 @@ jobs:
         run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
 
       - name: Build
-        run: go build -ldflags="-w -s" -tags "http httpjwt grpc database telemetry permission" -o user-service-linux-${{ env.SHORT_SHA }} .
+        run: go build -ldflags="-w -s" -tags "http httpjwt database telemetry permission" -o user-service-linux-${{ env.SHORT_SHA }} .
       - name: Run UPX
         uses: crazy-max/ghaction-upx@v3
         with:
@@ -52,7 +52,7 @@ jobs:
           go-version: '1.24'
 
       - name: Build
-        run: go build -ldflags="-w -s" -tags "http httpjwt grpc database telemetry permission" -o user-service-windows-${{ github.sha }}.exe .
+        run: go build -ldflags="-w -s" -tags "http httpjwt database telemetry permission" -o user-service-windows-${{ github.sha }}.exe .
       - name: Run UPX
         uses: crazy-max/ghaction-upx@v3
         with:
