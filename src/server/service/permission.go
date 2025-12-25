@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"user-service/src/interfaces/content"
 	"user-service/src/interfaces/grpc"
 	"user-service/src/interfaces/repository"
 	DTO "user-service/src/interfaces/server/dto"
@@ -23,26 +24,23 @@ import (
 )
 
 type PermissionService struct {
-	logger         logger.Interface
-	userRepo       repository.UserInterface
-	roleRepo       repository.RoleInterface
-	emailClient    grpc.EmailClient
-	auditLogClient grpc.AuditLogClient
+	logger   logger.Interface
+	userRepo repository.UserInterface
+	roleRepo repository.RoleInterface
+	client   *content.GrpcClientManager
 }
 
 func NewPermissionService(
 	lg logger.Interface,
 	userRepo repository.UserInterface,
 	roleRepo repository.RoleInterface,
-	emailClient grpc.EmailClient,
-	auditLogClient grpc.AuditLogClient,
+	client *content.GrpcClientManager,
 ) *PermissionService {
 	return &PermissionService{
-		logger:         logger.NewLoggerAdapter(lg, "permission-service"),
-		userRepo:       userRepo,
-		roleRepo:       roleRepo,
-		emailClient:    emailClient,
-		auditLogClient: auditLogClient,
+		logger:   logger.NewLoggerAdapter(lg, "permission-service"),
+		userRepo: userRepo,
+		roleRepo: roleRepo,
+		client:   client,
 	}
 }
 
@@ -127,7 +125,7 @@ func (service *PermissionService) EditUserPermission(data *DTO.EditUserPermissio
 		if len(grantList) != 0 {
 			auditLogRequest.Event = entity.AuditEventUserPermissionGrant.Value
 			auditLogRequest.NewValue = strings.Join(grantList, ",")
-			_, err := service.auditLogClient.Log(ctx, auditLogRequest)
+			_, err := service.client.AuditLogClient().Log(ctx, auditLogRequest)
 			if err != nil {
 				service.logger.Errorf("log user permission grant failed: %v", err)
 			}
@@ -135,12 +133,12 @@ func (service *PermissionService) EditUserPermission(data *DTO.EditUserPermissio
 		if len(revokeList) != 0 {
 			auditLogRequest.Event = entity.AuditEventUserPermissionRevoke.Value
 			auditLogRequest.NewValue = strings.Join(revokeList, ",")
-			_, err := service.auditLogClient.Log(ctx, auditLogRequest)
+			_, err := service.client.AuditLogClient().Log(ctx, auditLogRequest)
 			if err != nil {
 				service.logger.Errorf("log user permission revoke failed: %v", err)
 			}
 		}
-		_, err = service.emailClient.SendPermissionChange(ctx, &grpc.PermissionChange{
+		_, err = service.client.EmailClient().SendPermissionChange(ctx, &grpc.PermissionChange{
 			TargetEmail: targetUser.Email,
 			Cid:         auditLogRequest.Object,
 			Permissions: "\n+" + strings.Join(grantList, "\n+") + "\n-" + strings.Join(revokeList, "\n-"),
@@ -186,7 +184,7 @@ func (service *PermissionService) EditRolePermission(data *DTO.EditRolePermissio
 		if len(grantList) != 0 {
 			auditLogRequest.Event = entity.AuditEventRolePermissionGrant.Value
 			auditLogRequest.NewValue = strings.Join(grantList, ",")
-			_, err := service.auditLogClient.Log(ctx, auditLogRequest)
+			_, err := service.client.AuditLogClient().Log(ctx, auditLogRequest)
 			if err != nil {
 				service.logger.Errorf("log role permission grant failed: %v", err)
 			}
@@ -194,7 +192,7 @@ func (service *PermissionService) EditRolePermission(data *DTO.EditRolePermissio
 		if len(revokeList) != 0 {
 			auditLogRequest.Event = entity.AuditEventRolePermissionRevoke.Value
 			auditLogRequest.NewValue = strings.Join(revokeList, ",")
-			_, err := service.auditLogClient.Log(ctx, auditLogRequest)
+			_, err := service.client.AuditLogClient().Log(ctx, auditLogRequest)
 			if err != nil {
 				service.logger.Errorf("log role permission revoke failed: %v", err)
 			}
@@ -244,7 +242,7 @@ func (service *PermissionService) GrantUserRole(data *DTO.GrantUserRole) *dto.Ap
 		user, _ := service.userRepo.GetById(data.Uid)
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		_, err := service.auditLogClient.Log(ctx, &grpc.AuditLogRequest{
+		_, err := service.client.AuditLogClient().Log(ctx, &grpc.AuditLogRequest{
 			Event:     entity.AuditEventRoleGrant.Value,
 			Subject:   fmt.Sprintf("%04d", user.Cid),
 			Object:    fmt.Sprintf("%04d", targetUser.Cid),
@@ -255,7 +253,7 @@ func (service *PermissionService) GrantUserRole(data *DTO.GrantUserRole) *dto.Ap
 		if err != nil {
 			service.logger.Errorf("log role grant failed: %v", err)
 		}
-		_, err = service.emailClient.SendRoleChange(ctx, &grpc.RoleChange{
+		_, err = service.client.EmailClient().SendRoleChange(ctx, &grpc.RoleChange{
 			TargetEmail: []string{targetUser.Email},
 			Cid:         fmt.Sprintf("%04d", targetUser.Cid),
 			Roles:       "\n+" + strings.Join(newRoles, "\n+"),
@@ -295,7 +293,7 @@ func (service *PermissionService) RevokeUserRole(data *DTO.RevokeUserRole) *dto.
 		user, _ := service.userRepo.GetById(data.Uid)
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		_, err := service.auditLogClient.Log(ctx, &grpc.AuditLogRequest{
+		_, err := service.client.AuditLogClient().Log(ctx, &grpc.AuditLogRequest{
 			Event:     entity.AuditEventRoleRevoke.Value,
 			Subject:   fmt.Sprintf("%04d", user.Cid),
 			Object:    fmt.Sprintf("%04d", targetUser.Cid),
@@ -306,7 +304,7 @@ func (service *PermissionService) RevokeUserRole(data *DTO.RevokeUserRole) *dto.
 		if err != nil {
 			service.logger.Errorf("log role revoke failed: %v", err)
 		}
-		_, err = service.emailClient.SendRoleChange(ctx, &grpc.RoleChange{
+		_, err = service.client.EmailClient().SendRoleChange(ctx, &grpc.RoleChange{
 			TargetEmail: []string{targetUser.Email},
 			Cid:         fmt.Sprintf("%04d", targetUser.Cid),
 			Roles:       "\n-" + strings.Join(oldRoles, "\n-"),
@@ -364,7 +362,7 @@ func (service *PermissionService) GrantRoleUser(data *DTO.GrantRoleUser) *dto.Ap
 		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(len(users)+1)*5*time.Second)
 		defer cancel()
 
-		_, err := service.auditLogClient.Log(ctx, &grpc.AuditLogRequest{
+		_, err := service.client.AuditLogClient().Log(ctx, &grpc.AuditLogRequest{
 			Event:     entity.AuditEventRoleGrant.Value,
 			Subject:   fmt.Sprintf("%04d", data.Cid),
 			Object:    fmt.Sprintf("%s: %d", role.Name, role.ID),
@@ -380,7 +378,7 @@ func (service *PermissionService) GrantRoleUser(data *DTO.GrantRoleUser) *dto.Ap
 		utils.ForEach(users, func(index int, user *entity.User) {
 			emails[index] = user.Email
 		})
-		_, err = service.emailClient.SendRoleChange(ctx, &grpc.RoleChange{
+		_, err = service.client.EmailClient().SendRoleChange(ctx, &grpc.RoleChange{
 			TargetEmail: emails,
 			Cid:         strings.Join(userCids, ","),
 			Roles:       fmt.Sprintf("+%s", role.Name),
@@ -422,7 +420,7 @@ func (service *PermissionService) RevokeRoleUser(data *DTO.RevokeRoleUser) *dto.
 		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(len(users)+1)*5*time.Second)
 		defer cancel()
 
-		_, err := service.auditLogClient.Log(ctx, &grpc.AuditLogRequest{
+		_, err := service.client.AuditLogClient().Log(ctx, &grpc.AuditLogRequest{
 			Event:     entity.AuditEventRoleRevoke.Value,
 			Subject:   fmt.Sprintf("%04d", data.Cid),
 			Object:    fmt.Sprintf("%s: %d", role.Name, role.ID),
@@ -438,7 +436,7 @@ func (service *PermissionService) RevokeRoleUser(data *DTO.RevokeRoleUser) *dto.
 		utils.ForEach(users, func(index int, user *entity.User) {
 			emails[index] = user.Email
 		})
-		_, err = service.emailClient.SendRoleChange(ctx, &grpc.RoleChange{
+		_, err = service.client.EmailClient().SendRoleChange(ctx, &grpc.RoleChange{
 			TargetEmail: emails,
 			Cid:         strings.Join(userCids, ","),
 			Roles:       fmt.Sprintf("-%s", role.Name),

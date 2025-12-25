@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+	"user-service/src/interfaces/content"
 	"user-service/src/interfaces/grpc"
 	"user-service/src/interfaces/repository"
 	DTO "user-service/src/interfaces/server/dto"
@@ -23,20 +24,20 @@ import (
 )
 
 type RoleService struct {
-	logger         logger.Interface
-	repo           repository.RoleInterface
-	auditLogClient grpc.AuditLogClient
+	logger logger.Interface
+	repo   repository.RoleInterface
+	client *content.GrpcClientManager
 }
 
 func NewRoleService(
 	lg logger.Interface,
 	repo repository.RoleInterface,
-	auditLogClient grpc.AuditLogClient,
+	client *content.GrpcClientManager,
 ) *RoleService {
 	return &RoleService{
-		logger:         logger.NewLoggerAdapter(lg, "role-service"),
-		repo:           repo,
-		auditLogClient: auditLogClient,
+		logger: logger.NewLoggerAdapter(lg, "role-service"),
+		repo:   repo,
+		client: client,
 	}
 }
 
@@ -76,11 +77,11 @@ func (service *RoleService) GetById(data *DTO.GetRoleDetail) *dto.ApiResponse[*D
 	}
 	roleInfo := &DTO.RoleInfo{}
 	roleInfo.FromRoleEntity(role)
-	users, err := service.repo.GetRoleUsers(role.ID)
-	roleInfo.Users = make([]*DTO.BaseUserInfo, len(users))
-	utils.ForEach(users, func(index int, user *entity.User) {
+	userRoles, err := service.repo.GetRoleUsers(role.ID)
+	roleInfo.Users = make([]*DTO.BaseUserInfo, len(userRoles))
+	utils.ForEach(userRoles, func(index int, userRole *entity.UserRole) {
 		roleInfo.Users[index] = &DTO.BaseUserInfo{}
-		roleInfo.Users[index].FromUserEntity(user)
+		roleInfo.Users[index].FromUserEntity(userRole.User)
 	})
 	return dto.NewApiResponse(dto.SuccessHandleRequest, roleInfo)
 }
@@ -105,7 +106,7 @@ func (service *RoleService) Create(role *DTO.CreateRole) *dto.ApiResponse[bool] 
 	go func(role *DTO.CreateRole, roleEntity *entity.Role) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		_, err := service.auditLogClient.Log(ctx, &grpc.AuditLogRequest{
+		_, err := service.client.AuditLogClient().Log(ctx, &grpc.AuditLogRequest{
 			Event:     entity.AuditEventRoleCreated.Value,
 			Subject:   fmt.Sprintf("%04d", role.Cid),
 			Object:    strconv.Itoa(int(roleEntity.ID)),
@@ -149,8 +150,12 @@ func (service *RoleService) Update(role *DTO.UpdateRole) *dto.ApiResponse[bool] 
 
 	oldValue := fmt.Sprintf("%s(%s)", roleEntity.Name, roleEntity.Comment)
 
-	roleEntity.Name = role.Name
-	roleEntity.Comment = role.Description
+	if role.Name != "" && roleEntity.Name != role.Name {
+		roleEntity.Name = role.Name
+	}
+	if role.Description != "" && roleEntity.Comment != role.Description {
+		roleEntity.Comment = role.Description
+	}
 	if err := service.repo.Save(roleEntity); err != nil {
 		service.logger.Errorf("error occurred when update role: %v", err)
 		return dto.NewApiResponse(ErrDataBaseError, false)
@@ -159,7 +164,7 @@ func (service *RoleService) Update(role *DTO.UpdateRole) *dto.ApiResponse[bool] 
 	go func(role *DTO.UpdateRole, roleEntity *entity.Role, oldValue string) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		_, err := service.auditLogClient.Log(ctx, &grpc.AuditLogRequest{
+		_, err := service.client.AuditLogClient().Log(ctx, &grpc.AuditLogRequest{
 			Event:     entity.AuditEventRoleUpdated.Value,
 			Subject:   fmt.Sprintf("%04d", role.Cid),
 			Object:    strconv.Itoa(int(roleEntity.ID)),
@@ -185,7 +190,7 @@ func (service *RoleService) Delete(role *DTO.DeleteRole) *dto.ApiResponse[bool] 
 		return dto.NewApiResponse(dto.ErrNoPermission, false)
 	}
 
-	users, err := service.repo.GetRoleUsers(role.Id)
+	userRoles, err := service.repo.GetRoleUsers(role.Id)
 	if err != nil {
 		service.logger.Errorf("error occurred when get role users: %v", err)
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -194,12 +199,12 @@ func (service *RoleService) Delete(role *DTO.DeleteRole) *dto.ApiResponse[bool] 
 		return dto.NewApiResponse(ErrDataBaseError, false)
 	}
 
-	if len(users) > 0 && !role.Force {
-		service.logger.Errorf("role %d has users", role.Id)
+	if len(userRoles) > 0 && !role.Force {
+		service.logger.Errorf("Role(ID: %d) has %d users", role.Id, len(userRoles))
 		return dto.NewApiResponse(ErrRoleHasUsers, false)
 	}
 
-	if len(users) > 0 {
+	if len(userRoles) > 0 {
 		err = service.repo.DeleteRole(role.Id)
 	} else {
 		err = service.repo.Delete(&entity.Role{ID: role.Id})
@@ -212,7 +217,7 @@ func (service *RoleService) Delete(role *DTO.DeleteRole) *dto.ApiResponse[bool] 
 	go func(role *DTO.DeleteRole) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		_, err := service.auditLogClient.Log(ctx, &grpc.AuditLogRequest{
+		_, err := service.client.AuditLogClient().Log(ctx, &grpc.AuditLogRequest{
 			Event:     entity.AuditEventRoleDeleted.Value,
 			Subject:   fmt.Sprintf("%04d", role.Cid),
 			Object:    strconv.Itoa(int(role.Id)),

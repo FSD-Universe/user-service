@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"user-service/src/interfaces/content"
 	"user-service/src/interfaces/global"
 	"user-service/src/interfaces/grpc"
 	pb "user-service/src/interfaces/grpc"
@@ -25,23 +26,20 @@ import (
 )
 
 type UserService struct {
-	logger         logger.Interface
-	repo           repository.UserInterface
-	emailClient    grpc.EmailClient
-	auditLogClient grpc.AuditLogClient
+	logger logger.Interface
+	repo   repository.UserInterface
+	client *content.GrpcClientManager
 }
 
 func NewUserService(
 	lg logger.Interface,
 	repo repository.UserInterface,
-	emailClient grpc.EmailClient,
-	auditLogClient grpc.AuditLogClient,
+	client *content.GrpcClientManager,
 ) *UserService {
 	return &UserService{
-		logger:         logger.NewLoggerAdapter(lg, "user-service"),
-		repo:           repo,
-		emailClient:    emailClient,
-		auditLogClient: auditLogClient,
+		logger: logger.NewLoggerAdapter(lg, "user-service"),
+		repo:   repo,
+		client: client,
 	}
 }
 
@@ -65,7 +63,7 @@ func verifyEmailCode[T comparable](u *UserService, email string, code string) *d
 	var zero T
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	res, err := u.emailClient.VerifyEmailCode(ctx, &pb.VerifyCode{Email: email, Code: code})
+	res, err := u.client.EmailClient().VerifyEmailCode(ctx, &pb.VerifyCode{Email: email, Code: code})
 	if err != nil {
 		u.logger.Errorf("error occurred when verify email code: %v", err)
 		return dto.NewApiResponse[T](dto.ErrServerError, zero)
@@ -85,7 +83,7 @@ func verifyEmailCode[T comparable](u *UserService, email string, code string) *d
 }
 
 func (u *UserService) removeEmailCode(ctx context.Context, email string) {
-	_, err := u.emailClient.RemoveEmailCode(ctx, &pb.RemoveVerifyCode{Email: email})
+	_, err := u.client.EmailClient().RemoveEmailCode(ctx, &pb.RemoveVerifyCode{Email: email})
 	if err != nil {
 		u.logger.Errorf("error occurred when remove email code: %v", err)
 	}
@@ -121,14 +119,14 @@ func (u *UserService) Register(form *DTO.UserRegister) *dto.ApiResponse[bool] {
 	go func(u *UserService, form *DTO.UserRegister, user *entity.User) {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
-		_, err := u.emailClient.SendWelcome(ctx, &pb.Welcome{
+		_, err := u.client.EmailClient().SendWelcome(ctx, &pb.Welcome{
 			TargetEmail: form.Email,
 			Cid:         fmt.Sprintf("%04d", form.Cid),
 		})
 		if err != nil {
 			u.logger.Errorf("error occurred when send welcome email: %v", err)
 		}
-		_, err = u.auditLogClient.Log(ctx, &pb.AuditLogRequest{
+		_, err = u.client.AuditLogClient().Log(ctx, &pb.AuditLogRequest{
 			Event:     entity.AuditEventUserRegistered.Value,
 			Subject:   fmt.Sprintf("%04d", form.Cid),
 			Object:    fmt.Sprintf("%s(%s)", user.Username, user.Email),
@@ -188,7 +186,7 @@ func (u *UserService) ResetPassword(form *DTO.UserResetPassword) *dto.ApiRespons
 	go func(u *UserService, form *DTO.UserResetPassword, user *entity.User) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		_, err := u.auditLogClient.Log(ctx, &grpc.AuditLogRequest{
+		_, err := u.client.AuditLogClient().Log(ctx, &grpc.AuditLogRequest{
 			Event:     entity.AuditEventUserResetPassword.Value,
 			Subject:   fmt.Sprintf("%04d", user.Cid),
 			Object:    fmt.Sprintf("%s(%s)", user.Username, user.Email),
@@ -198,7 +196,7 @@ func (u *UserService) ResetPassword(form *DTO.UserResetPassword) *dto.ApiRespons
 		if err != nil {
 			u.logger.Errorf("error occurred when log audit: %v", err)
 		}
-		_, err = u.emailClient.SendPasswordReset(ctx, &pb.PasswordReset{
+		_, err = u.client.EmailClient().SendPasswordReset(ctx, &pb.PasswordReset{
 			TargetEmail: form.Email,
 			Cid:         fmt.Sprintf("%04d", user.Cid),
 			Time:        time.Now().Format(time.RFC3339),
@@ -225,9 +223,9 @@ func (u *UserService) GetPages(page *DTO.GetUserPage) *dto.ApiResponse[*DTO.GetU
 		u.logger.Errorf("error occurred when get pages: %v", err)
 		return dto.NewApiResponse[*DTO.GetUserPageResponse](ErrDataBaseError, nil)
 	}
-	userInfos := make([]*DTO.UserInfo, len(users))
+	userInfos := make([]*DTO.FullUserInfo, len(users))
 	utils.ForEach(users, func(index int, element *entity.User) {
-		userInfos[index] = &DTO.UserInfo{}
+		userInfos[index] = &DTO.FullUserInfo{}
 		userInfos[index].FromUserEntity(element)
 	})
 	return dto.NewApiResponse(dto.SuccessHandleRequest, &DTO.GetUserPageResponse{
@@ -242,29 +240,10 @@ var (
 	ErrUserNotFound = dto.NewApiStatus("USER_NOT_FOUND", "用户不存在", dto.HttpCodeNotFound)
 )
 
-func (u *UserService) GetSelfData(data *DTO.GetCurrentUserData) *dto.ApiResponse[*DTO.BaseUserInfo] {
+func (u *UserService) GetSelfData(data *DTO.GetCurrentUserData) *dto.ApiResponse[*DTO.UserInfo] {
 	user, err := u.repo.GetById(data.Uid)
 	if err != nil {
 		u.logger.Errorf("GetSelfData handle fail, get user err, %v", err)
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewApiResponse[*DTO.BaseUserInfo](ErrUserNotFound, nil)
-		}
-		return dto.NewApiResponse[*DTO.BaseUserInfo](ErrDataBaseError, nil)
-	}
-	userInfo := &DTO.BaseUserInfo{}
-	userInfo.FromUserEntity(user)
-	return dto.NewApiResponse(dto.SuccessHandleRequest, userInfo)
-}
-
-func (u *UserService) GetData(data *DTO.GetUserData) *dto.ApiResponse[*DTO.UserInfo] {
-	perm := permission.Permission(data.Permission)
-	if !perm.HasPermission(permission.UserShowList) {
-		u.logger.Errorf("user %04d no permission to get user data", data.Cid)
-		return dto.NewApiResponse[*DTO.UserInfo](dto.ErrNoPermission, nil)
-	}
-	user, err := u.repo.GetById(data.Id)
-	if err != nil {
-		u.logger.Errorf("GetData handle fail, get user err, %v", err)
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return dto.NewApiResponse[*DTO.UserInfo](ErrUserNotFound, nil)
 		}
@@ -275,14 +254,33 @@ func (u *UserService) GetData(data *DTO.GetUserData) *dto.ApiResponse[*DTO.UserI
 	return dto.NewApiResponse(dto.SuccessHandleRequest, userInfo)
 }
 
-func (u *UserService) UpdateSelfData(data *DTO.UpdateCurrentUserData) *dto.ApiResponse[*DTO.BaseUserInfo] {
+func (u *UserService) GetData(data *DTO.GetUserData) *dto.ApiResponse[*DTO.FullUserInfo] {
+	perm := permission.Permission(data.Permission)
+	if !perm.HasPermission(permission.UserShowList) {
+		u.logger.Errorf("user %04d no permission to get user data", data.Cid)
+		return dto.NewApiResponse[*DTO.FullUserInfo](dto.ErrNoPermission, nil)
+	}
+	user, err := u.repo.GetById(data.Id)
+	if err != nil {
+		u.logger.Errorf("GetData handle fail, get user err, %v", err)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewApiResponse[*DTO.FullUserInfo](ErrUserNotFound, nil)
+		}
+		return dto.NewApiResponse[*DTO.FullUserInfo](ErrDataBaseError, nil)
+	}
+	userInfo := &DTO.FullUserInfo{}
+	userInfo.FromUserEntity(user)
+	return dto.NewApiResponse(dto.SuccessHandleRequest, userInfo)
+}
+
+func (u *UserService) UpdateSelfData(data *DTO.UpdateCurrentUserData) *dto.ApiResponse[*DTO.UserInfo] {
 	user, err := u.repo.GetById(data.Uid)
 	if err != nil {
 		u.logger.Errorf("UpdateSelfData handle fail, get user err, %v", err)
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return dto.NewApiResponse[*DTO.BaseUserInfo](ErrUserNotFound, nil)
+			return dto.NewApiResponse[*DTO.UserInfo](ErrUserNotFound, nil)
 		}
-		return dto.NewApiResponse[*DTO.BaseUserInfo](ErrDataBaseError, nil)
+		return dto.NewApiResponse[*DTO.UserInfo](ErrDataBaseError, nil)
 	}
 
 	var oldEmail string
@@ -291,7 +289,7 @@ func (u *UserService) UpdateSelfData(data *DTO.UpdateCurrentUserData) *dto.ApiRe
 		updates["username"] = data.Username
 	}
 	if data.Email != "" && user.Email != data.Email {
-		if res := verifyEmailCode[*DTO.BaseUserInfo](u, data.Email, data.EmailCode); res != nil {
+		if res := verifyEmailCode[*DTO.UserInfo](u, data.Email, data.EmailCode); res != nil {
 			return res
 		}
 		oldEmail = user.Email
@@ -307,25 +305,25 @@ func (u *UserService) UpdateSelfData(data *DTO.UpdateCurrentUserData) *dto.ApiRe
 	}
 
 	if len(updates) == 0 {
-		return dto.NewApiResponse[*DTO.BaseUserInfo](dto.ErrErrorParam, nil)
+		return dto.NewApiResponse[*DTO.UserInfo](dto.ErrErrorParam, nil)
 	}
 
 	if err := u.repo.Update(user, updates); err != nil {
 		u.logger.Errorf("UpdateSelfData handle fail, save user err, %v", err)
-		return dto.NewApiResponse[*DTO.BaseUserInfo](ErrDataBaseError, nil)
+		return dto.NewApiResponse[*DTO.UserInfo](ErrDataBaseError, nil)
 	}
 
 	user, err = u.repo.GetById(data.Uid)
 	if err != nil {
 		u.logger.Errorf("UpdateSelfData handle fail, get user err, %v", err)
-		return dto.NewApiResponse[*DTO.BaseUserInfo](ErrDataBaseError, nil)
+		return dto.NewApiResponse[*DTO.UserInfo](ErrDataBaseError, nil)
 	}
 
 	if oldEmail != "" {
 		go func(u *UserService, user *entity.User, oldEmail string) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			_, err := u.emailClient.SendEmailChange(ctx, &grpc.EmailChange{
+			_, err := u.client.EmailClient().SendEmailChange(ctx, &grpc.EmailChange{
 				TargetEmail: oldEmail,
 				Cid:         fmt.Sprintf("%04d", user.Cid),
 				Email:       user.Email,
@@ -339,7 +337,7 @@ func (u *UserService) UpdateSelfData(data *DTO.UpdateCurrentUserData) *dto.ApiRe
 		}(u, user, oldEmail)
 	}
 
-	userInfo := &DTO.BaseUserInfo{}
+	userInfo := &DTO.UserInfo{}
 	userInfo.FromUserEntity(user)
 
 	return dto.NewApiResponse(dto.SuccessHandleRequest, userInfo)
@@ -393,7 +391,7 @@ func (u *UserService) UpdateData(data *DTO.UpdateUserData) *dto.ApiResponse[bool
 		newValueStr, _ := json.Marshal(newValue)
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
-		_, err = u.auditLogClient.Log(ctx, &pb.AuditLogRequest{
+		_, err = u.client.AuditLogClient().Log(ctx, &pb.AuditLogRequest{
 			Event:     entity.AuditEventUserInformationEdit.Value,
 			Subject:   fmt.Sprintf("%04d", data.Cid),
 			Object:    fmt.Sprintf("%04d", user.Cid),
@@ -447,7 +445,7 @@ func (u *UserService) UpdatePassword(data *DTO.UpdateUserPassword) *dto.ApiRespo
 	go func(u *UserService, data *DTO.UpdateUserPassword, user *entity.User) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		_, err := u.emailClient.SendPasswordChange(ctx, &pb.PasswordChange{
+		_, err := u.client.EmailClient().SendPasswordChange(ctx, &pb.PasswordChange{
 			TargetEmail: user.Email,
 			Cid:         fmt.Sprintf("%04d", user.Cid),
 			Time:        time.Now().Format(time.RFC3339),

@@ -16,10 +16,10 @@ type UserLogin struct {
 }
 
 type UserLoginResponse struct {
-	User         *BaseUserInfo `json:"user"`
-	Token        string        `json:"token"`
-	ExpiresIn    int           `json:"expires_in"`
-	RefreshToken string        `json:"refresh_token"`
+	User         *UserInfo `json:"user"`
+	Token        string    `json:"token"`
+	ExpiresIn    int       `json:"expires_in"`
+	RefreshToken string    `json:"refresh_token"`
 }
 
 type UserFsdLogin struct {

@@ -16,17 +16,12 @@ import (
 )
 
 type BaseUserInfo struct {
-	Id            uint       `json:"id"`
-	Username      string     `json:"username"`
-	Email         string     `json:"email"`
-	Cid           uint       `json:"cid"`
-	AvatarUrl     string     `json:"avatar_url"`
-	QQ            string     `json:"qq"`
-	Rating        int        `json:"rating"`
-	Permission    uint64     `json:"permission"`
-	RegisterTime  time.Time  `json:"register_time"`
-	LastLoginTime *time.Time `json:"last_login_time"`
-	LastLoginIp   *string    `json:"last_login_ip"`
+	Id        uint   `json:"id"`
+	Username  string `json:"username"`
+	Email     string `json:"email"`
+	Cid       uint   `json:"cid"`
+	AvatarUrl string `json:"avatar_url"`
+	QQ        string `json:"qq"`
 }
 
 func (b *BaseUserInfo) FromUserEntity(user *entity.User) *BaseUserInfo {
@@ -36,19 +31,6 @@ func (b *BaseUserInfo) FromUserEntity(user *entity.User) *BaseUserInfo {
 	b.Cid = user.Cid
 	if user.QQ != nil {
 		b.QQ = *user.QQ
-	}
-	b.Rating = user.Rating
-	perm := permission.Permission(user.Permission)
-	utils.ForEach(user.Roles, func(index int, role *entity.UserRole) {
-		perm.Merge(permission.Permission(role.Role.Permission))
-	})
-	b.Permission = uint64(perm)
-	b.RegisterTime = user.CreatedAt
-	if user.LastLoginTime.Valid {
-		b.LastLoginTime = &user.LastLoginTime.Time
-	}
-	if user.LastLoginIP != nil {
-		b.LastLoginIp = user.LastLoginIP
 	}
 	if user.CurrentAvatar != nil {
 		b.AvatarUrl = user.CurrentAvatar.Url
@@ -62,22 +44,51 @@ func (b *BaseUserInfo) FromUserEntity(user *entity.User) *BaseUserInfo {
 
 type UserInfo struct {
 	BaseUserInfo
-	Banned     bool            `json:"banned"`
-	BannedTime *time.Time      `json:"banned_time"`
-	Roles      []*BaseRoleInfo `json:"roles"`
+	Rating          int             `json:"rating"`
+	Permission      uint64          `json:"permission"`
+	TotalPermission uint64          `json:"total_permission"`
+	RegisterTime    time.Time       `json:"register_time"`
+	LastLoginTime   *time.Time      `json:"last_login_time"`
+	LastLoginIp     *string         `json:"last_login_ip"`
+	Roles           []*BaseRoleInfo `json:"roles"`
 }
 
 func (u *UserInfo) FromUserEntity(user *entity.User) *UserInfo {
 	u.BaseUserInfo.FromUserEntity(user)
-	u.Banned = user.Banned
-	if user.BannedUntil.Valid {
-		u.BannedTime = &user.BannedUntil.Time
+	u.Rating = user.Rating
+	perm := permission.Permission(user.Permission)
+	utils.ForEach(user.Roles, func(index int, role *entity.UserRole) {
+		perm.Merge(permission.Permission(role.Role.Permission))
+	})
+	u.Permission = user.Permission
+	u.TotalPermission = uint64(perm)
+	u.RegisterTime = user.CreatedAt
+	if user.LastLoginTime.Valid {
+		u.LastLoginTime = &user.LastLoginTime.Time
+	}
+	if user.LastLoginIP != nil {
+		u.LastLoginIp = user.LastLoginIP
 	}
 	u.Roles = make([]*BaseRoleInfo, len(user.Roles))
 	utils.ForEach(user.Roles, func(index int, role *entity.UserRole) {
 		u.Roles[index] = &BaseRoleInfo{}
 		u.Roles[index].FromRoleEntity(role.Role)
 	})
+	return u
+}
+
+type FullUserInfo struct {
+	UserInfo
+	Banned     bool       `json:"banned"`
+	BannedTime *time.Time `json:"banned_time"`
+}
+
+func (u *FullUserInfo) FromUserEntity(user *entity.User) *FullUserInfo {
+	u.UserInfo.FromUserEntity(user)
+	u.Banned = user.Banned
+	if user.BannedUntil.Valid {
+		u.BannedTime = &user.BannedUntil.Time
+	}
 	return u
 }
 
@@ -114,10 +125,10 @@ type GetUserPage struct {
 }
 
 type GetUserPageResponse struct {
-	Data     []*UserInfo `json:"page_data"`
-	Total    int         `json:"total"`
-	PageNum  int         `json:"page_num"`
-	PageSize int         `json:"page_size"`
+	Data     []*FullUserInfo `json:"page_data"`
+	Total    int             `json:"total"`
+	PageNum  int             `json:"page_num"`
+	PageSize int             `json:"page_size"`
 }
 
 type GetCurrentUserData struct {

@@ -98,7 +98,7 @@ func (s *AuthService) Login(form *DTO.UserLogin) *dto.ApiResponse[*DTO.UserLogin
 		s.logger.Errorf("UserLogin handle fail, generate refresh token err, %v", err)
 		return dto.NewApiResponse[*DTO.UserLoginResponse](dto.ErrServerError, nil)
 	}
-	userModel := &DTO.BaseUserInfo{}
+	userModel := &DTO.UserInfo{}
 	userModel.FromUserEntity(user)
 
 	return dto.NewApiResponse[*DTO.UserLoginResponse](
@@ -223,7 +223,7 @@ func (s *AuthService) RefreshToken(form *DTO.RefreshToken) *dto.ApiResponse[*DTO
 		}
 	}
 
-	userModel := &DTO.BaseUserInfo{}
+	userModel := &DTO.UserInfo{}
 	userModel.FromUserEntity(user)
 
 	return dto.NewApiResponse[*DTO.RefreshTokenResponse](

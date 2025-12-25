@@ -49,14 +49,14 @@ func (repo *RoleRepository) GetPages(pageNum int, pageSize int, search string) (
 	return
 }
 
-func (repo *RoleRepository) GetRoleUsers(roleId uint) (users []*entity.User, err error) {
-	users = make([]*entity.User, 0)
+func (repo *RoleRepository) GetRoleUsers(roleId uint) (userRoles []*entity.UserRole, err error) {
+	userRoles = make([]*entity.UserRole, 0)
 	err = repo.QueryWithTransaction(func(tx *gorm.DB) error {
 		return tx.Model(&entity.UserRole{}).
 			Where("role_id = ?", roleId).
 			Joins("User").
-			Preload("User.CurrentAvatar").
-			Find(&users).
+			Joins("User.CurrentAvatar").
+			Find(&userRoles).
 			Error
 	})
 	return

@@ -45,8 +45,7 @@ func StartServer(content *content.ApplicationContent) {
 		service.NewUserService(
 			content.Logger(),
 			content.UserRepo(),
-			content.EmailClient(),
-			content.AuditLogClient(),
+			content.GrpcClientManager(),
 		),
 	)
 
@@ -55,7 +54,7 @@ func StartServer(content *content.ApplicationContent) {
 		service.NewRoleService(
 			content.Logger(),
 			content.RoleRepo(),
-			content.AuditLogClient(),
+			content.GrpcClientManager(),
 		),
 	)
 
@@ -65,8 +64,7 @@ func StartServer(content *content.ApplicationContent) {
 			content.Logger(),
 			content.UserRepo(),
 			content.RoleRepo(),
-			content.EmailClient(),
-			content.AuditLogClient(),
+			content.GrpcClientManager(),
 		),
 	)
 
@@ -108,6 +106,7 @@ func StartServer(content *content.ApplicationContent) {
 	roleGroup.PATCH("/:id/users", permissionController.GrantRoleUser, jwtMidware, requireNoRefresh)
 	roleGroup.DELETE("/:id/users", permissionController.RevokeRoleUser, jwtMidware, requireNoRefresh)
 
+	http.SetHealthPoint(e)
 	http.SetUnmatchedRoute(e)
 	http.SetCleaner(content.Cleaner(), e)
 
