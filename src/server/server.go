@@ -28,7 +28,7 @@ func StartServer(content *content.ApplicationContent) {
 	http.SetEchoConfig(lg, e, c.ServerConfig.HttpServerConfig, nil)
 	jwtMidware, requireNoRefresh, requireRefresh := http.GetJWTMiddleware(content.ClaimFactory())
 	if c.TelemetryConfig.HttpServerTrace {
-		http.SetTelemetry(e, c.TelemetryConfig)
+		http.SetTelemetry(e, c.TelemetryConfig, http.SkipperHealthCheck)
 	}
 
 	authController := controller.NewAuthController(
