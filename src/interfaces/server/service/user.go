@@ -20,4 +20,6 @@ type UserInterface interface {
 	UpdateSelfData(data *DTO.UpdateCurrentUserData) *dto.ApiResponse[*DTO.UserInfo]
 	UpdateData(data *DTO.UpdateUserData) *dto.ApiResponse[bool]
 	UpdatePassword(data *DTO.UpdateUserPassword) *dto.ApiResponse[bool]
+	Ban(data *DTO.BanUser) *dto.ApiResponse[bool]
+	Unban(data *DTO.UnbanUser) *dto.ApiResponse[bool]
 }

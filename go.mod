@@ -10,7 +10,7 @@ require (
 	google.golang.org/grpc v1.78.0
 	google.golang.org/protobuf v1.36.11
 	gorm.io/gorm v1.31.1
-	half-nothing.cn/service-core v0.7.1
+	half-nothing.cn/service-core v0.7.2
 )
 
 require (

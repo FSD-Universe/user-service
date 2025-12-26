@@ -2,6 +2,7 @@
 package repository
 
 import (
+	"database/sql"
 	"time"
 
 	"gorm.io/gorm"
@@ -137,4 +138,19 @@ func (repo *UserRepository) GetByIds(userIds []uint) (users []*entity.User, err 
 		return tx.Find(&users, userIds).Error
 	})
 	return
+}
+
+func (repo *UserRepository) Ban(userId uint, time sql.NullTime) error {
+	return repo.QueryWithTransaction(func(tx *gorm.DB) error {
+		return tx.Model(&entity.User{ID: userId}).Updates(map[string]interface{}{"banned": true, "banned_until": time}).Error
+	})
+}
+
+func (repo *UserRepository) Unban(userId uint) error {
+	return repo.QueryWithTransaction(func(tx *gorm.DB) error {
+		return tx.Model(&entity.User{ID: userId}).Updates(map[string]interface{}{"banned": false, "banned_until": sql.NullTime{
+			Valid: false,
+			Time:  time.Time{},
+		}}).Error
+	})
 }

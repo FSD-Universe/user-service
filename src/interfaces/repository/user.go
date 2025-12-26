@@ -2,6 +2,8 @@
 package repository
 
 import (
+	"database/sql"
+
 	"half-nothing.cn/service-core/interfaces/database/entity"
 	"half-nothing.cn/service-core/interfaces/database/repository"
 	"half-nothing.cn/service-core/utils"
@@ -39,4 +41,6 @@ type UserInterface interface {
 	GrantRole(userId uint, roleIds []uint) error
 	RevokeRole(userId uint, roleIds []uint) error
 	GetByIds(userIds []uint) ([]*entity.User, error)
+	Ban(userId uint, time sql.NullTime) error
+	Unban(userId uint) error
 }

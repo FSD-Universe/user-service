@@ -82,6 +82,8 @@ func StartServer(content *content.ApplicationContent) {
 	userGroup.GET("/availability", userController.CheckAvailability)
 	userGroup.POST("/password", userController.ResetPassword)
 	userGroup.PUT("/password", userController.UpdatePassword, jwtMidware, requireNoRefresh)
+	userGroup.PUT("/:id/ban", userController.Ban, jwtMidware, requireNoRefresh)
+	userGroup.DELETE("/:id/ban", userController.Unban, jwtMidware, requireNoRefresh)
 
 	profileGroup := userGroup.Group("/profiles")
 	profileGroup.GET("/self", userController.GetSelfData, jwtMidware, requireNoRefresh)

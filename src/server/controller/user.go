@@ -253,3 +253,51 @@ func (controller *UserController) UpdatePassword(ctx echo.Context) error {
 	controller.logger.Infof("UpdatePassword with argument %#v", data)
 	return controller.service.UpdatePassword(data).Response(ctx)
 }
+
+func (controller *UserController) Ban(ctx echo.Context) error {
+	data := &DTO.BanUser{}
+	if err := ctx.Bind(data); err != nil {
+		controller.logger.Errorf("Ban handle fail, parse argument fail, %v", err)
+		return dto.ErrorResponse(ctx, dto.ErrErrorParam)
+	}
+	res, err := dto.ValidStruct(data)
+	if err != nil {
+		controller.logger.Errorf("Ban handle fail, validate err, %v", err)
+		return dto.ErrorResponse(ctx, dto.ErrServerError)
+	}
+	if res != nil {
+		controller.logger.Errorf("Ban handle fail, validate argument fail, %v", res)
+		return dto.ErrorResponse(ctx, res)
+	}
+	dto.SetHttpContent(data, ctx)
+	if err := jwt.SetJwtContent(data, ctx); err != nil {
+		controller.logger.Errorf("Ban handle fail, set jwt content err, %v", err)
+		return dto.ErrorResponse(ctx, dto.ErrUnknownJwtError)
+	}
+	controller.logger.Debugf("Ban with argument %#v", data)
+	return controller.service.Ban(data).Response(ctx)
+}
+
+func (controller *UserController) Unban(ctx echo.Context) error {
+	data := &DTO.UnbanUser{}
+	if err := ctx.Bind(data); err != nil {
+		controller.logger.Errorf("Unban handle fail, parse argument fail, %v", err)
+		return dto.ErrorResponse(ctx, dto.ErrErrorParam)
+	}
+	res, err := dto.ValidStruct(data)
+	if err != nil {
+		controller.logger.Errorf("Unban handle fail, validate err, %v", err)
+		return dto.ErrorResponse(ctx, dto.ErrServerError)
+	}
+	if res != nil {
+		controller.logger.Errorf("Unban handle fail, validate argument fail, %v", res)
+		return dto.ErrorResponse(ctx, res)
+	}
+	dto.SetHttpContent(data, ctx)
+	if err := jwt.SetJwtContent(data, ctx); err != nil {
+		controller.logger.Errorf("Unban handle fail, set jwt content err, %v", err)
+		return dto.ErrorResponse(ctx, dto.ErrUnknownJwtError)
+	}
+	controller.logger.Debugf("Unban with argument %#v", data)
+	return controller.service.Unban(data).Response(ctx)
+}

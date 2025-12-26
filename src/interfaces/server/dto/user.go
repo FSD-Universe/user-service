@@ -168,3 +168,17 @@ type UpdateUserData struct {
 	QQ       string `json:"qq" valid:"max=16,regex=^[1-9][0-9]*$"`
 	Password string `json:"password"`
 }
+
+type BanUser struct {
+	dto.HttpContent
+	jwt.Content
+	Id            uint   `param:"id" valid:"required,min=0;exclude"`
+	BannedSeconds uint   `json:"time"`
+	Reason        string `json:"reason" valid:"required"`
+}
+
+type UnbanUser struct {
+	dto.HttpContent
+	jwt.Content
+	Id uint `param:"id" valid:"required,min=0;exclude"`
+}

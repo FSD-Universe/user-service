@@ -16,4 +16,6 @@ type UserInterface interface {
 	UpdateSelfData(ctx echo.Context) error
 	UpdateData(ctx echo.Context) error
 	UpdatePassword(ctx echo.Context) error
+	Ban(ctx echo.Context) error
+	Unban(ctx echo.Context) error
 }

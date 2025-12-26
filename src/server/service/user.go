@@ -6,6 +6,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -456,6 +457,115 @@ func (u *UserService) UpdatePassword(data *DTO.UpdateUserPassword) *dto.ApiRespo
 			u.logger.Errorf("error occurred when send password change email: %v", err)
 		}
 	}(u, data, user)
+
+	return dto.NewApiResponse(dto.SuccessHandleRequest, true)
+}
+
+func (u *UserService) Ban(data *DTO.BanUser) *dto.ApiResponse[bool] {
+	perm := permission.Permission(data.Permission)
+	if !perm.HasPermission(permission.UserBan) {
+		u.logger.Errorf("user %04d no permission to ban user", data.Cid)
+		return dto.NewApiResponse[bool](dto.ErrNoPermission, false)
+	}
+
+	user, err := u.repo.GetById(data.Id)
+	if err != nil {
+		u.logger.Errorf("Ban handle fail, get user err, %v", err)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewApiResponse[bool](ErrUserNotFound, false)
+		}
+		return dto.NewApiResponse[bool](ErrDataBaseError, false)
+	}
+
+	var bannedUntil sql.NullTime
+	bannedUntil.Valid = data.BannedSeconds > 0
+	bannedUntil.Time = time.Now().Add(time.Duration(data.BannedSeconds) * time.Second)
+
+	if err := u.repo.Ban(user.ID, bannedUntil); err != nil {
+		return dto.NewApiResponse[bool](ErrDataBaseError, false)
+	}
+
+	go func(data *DTO.BanUser, user *entity.User, bannedUntil sql.NullTime) {
+		operator, _ := u.repo.GetById(data.Uid)
+		var bannedTime string
+		if !bannedUntil.Valid {
+			bannedTime = "永不解封"
+		} else {
+			bannedTime = bannedUntil.Time.Format(time.RFC3339)
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_, err := u.client.AuditLogClient().Log(ctx, &pb.AuditLogRequest{
+			Event:     entity.AuditEventUserBan.Value,
+			Subject:   fmt.Sprintf("%04d", operator.Cid),
+			Object:    fmt.Sprintf("%04d", user.Cid),
+			Ip:        data.Ip,
+			UserAgent: data.UserAgent,
+			NewValue:  data.Reason,
+		})
+		if err != nil {
+			u.logger.Errorf("error occurred when log audit: %v", err)
+		}
+		_, err = u.client.EmailClient().SendBanned(ctx, &pb.Banned{
+			TargetEmail: user.Email,
+			Cid:         fmt.Sprintf("%04d", user.Cid),
+			Reason:      data.Reason,
+			Time:        bannedTime,
+			Operator:    fmt.Sprintf("%04d", operator.Cid),
+			Contact:     operator.Email,
+		})
+		if err != nil {
+			u.logger.Errorf("error occurred when send banned email: %v", err)
+		}
+	}(data, user, bannedUntil)
+
+	return dto.NewApiResponse(dto.SuccessHandleRequest, true)
+}
+
+func (u *UserService) Unban(data *DTO.UnbanUser) *dto.ApiResponse[bool] {
+	perm := permission.Permission(data.Permission)
+	if !perm.HasPermission(permission.UserBan) {
+		u.logger.Errorf("user %04d no permission to unban user", data.Cid)
+		return dto.NewApiResponse[bool](dto.ErrNoPermission, false)
+	}
+
+	user, err := u.repo.GetById(data.Id)
+	if err != nil {
+		u.logger.Errorf("Unban handle fail, get user err, %v", err)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return dto.NewApiResponse[bool](ErrUserNotFound, false)
+		}
+		return dto.NewApiResponse[bool](ErrDataBaseError, false)
+	}
+
+	if err := u.repo.Unban(user.ID); err != nil {
+		return dto.NewApiResponse[bool](ErrDataBaseError, false)
+	}
+
+	go func(data *DTO.UnbanUser, user *entity.User) {
+		operator, _ := u.repo.GetById(data.Uid)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		_, err := u.client.AuditLogClient().Log(ctx, &pb.AuditLogRequest{
+			Event:     entity.AuditEventUserUnban.Value,
+			Subject:   fmt.Sprintf("%04d", operator.Cid),
+			Object:    fmt.Sprintf("%04d", user.Cid),
+			Ip:        data.Ip,
+			UserAgent: data.UserAgent,
+		})
+		if err != nil {
+			u.logger.Errorf("error occurred when log audit: %v", err)
+		}
+		_, err = u.client.EmailClient().SendUnbanned(ctx, &pb.Unbanned{
+			TargetEmail: user.Email,
+			Cid:         fmt.Sprintf("%04d", user.Cid),
+			Operator:    fmt.Sprintf("%04d", operator.Cid),
+			Contact:     operator.Email,
+		})
+		if err != nil {
+			u.logger.Errorf("error occurred when send unbanned email: %v", err)
+		}
+	}(data, user)
 
 	return dto.NewApiResponse(dto.SuccessHandleRequest, true)
 }

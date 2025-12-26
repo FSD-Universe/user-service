@@ -78,6 +78,13 @@ message Banned {
   string contact = 6;
 }
 
+message Unbanned {
+  string targetEmail = 1;
+  string cid = 2;
+  string operator = 3;
+  string contact = 4;
+}
+
 message InstructorChange {
   string targetEmail = 1;
   string cid = 2;
@@ -181,6 +188,7 @@ service Email {
   rpc SendApplicationRejected(ApplicationRejected) returns (SendResponse);
   rpc SendAtcRatingChange(AtcRatingChange) returns (SendResponse);
   rpc SendBanned(Banned) returns (SendResponse);
+  rpc SendUnbanned(Unbanned) returns (SendResponse);
   rpc SendInstructorChange(InstructorChange) returns (SendResponse);
   rpc SendKickedFromServer(KickedFromServer) returns (SendResponse);
   rpc SendPasswordChange(PasswordChange) returns (SendResponse);
